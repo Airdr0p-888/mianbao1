@@ -359,7 +359,7 @@
   <script src="ethers.umd.min.js"></script>
   <script src="contract_data.js?v=20260601r5"></script>
   <script>
-    // v20260601r5: 每笔mint立刻加池子 + lpTokenPct参数 + 构造函数参数16个
+    // v20260601r6: 每笔mint立刻加池子 + lpTokenPct参数 + auto-deploy vanity factory
     if(typeof CONTRACT_DATA !== 'undefined' && typeof CONTRACT_DATA.BYTECODE === 'string'){
       var bcLen = CONTRACT_DATA.BYTECODE.length;
       if(Math.abs(bcLen - 39166) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 39166'); }
@@ -367,6 +367,7 @@
     }
   </script>
   <script src="factory_data.js?v=20260601r3"></script>
+  <script src="vanity_deployer_data.js?v=20260601r6"></script>
 </head>
 <body>
 
@@ -1014,67 +1015,78 @@ function setStep(n){
 }
 
 /* ─── VANITY ADDRESS (CREATE2) ─── */
-// Pre-computed vanity deployer addresses (update after deploying VanityDeployer)
-// BSC mainnet: update this after deploying once
-var VANITY_FACTORY_ADDR = ''; // ← 部署 VanityDeployer 后填入地址
+// Factory address stored in localStorage (auto-deployed on first use)
+var VANITY_FACTORY_ADDR = localStorage.getItem('vanity_factory_addr') || '';
 
-async function findSaltForSuffix(suffix, creationCode, signerAddr) {
+// Load factory bytecode from vanity_deployer_data.js
+var VANITY_FACTORY_BYTECODE = (typeof VANITY_DEPLOYER_BYTECODE !== 'undefined') ? VANITY_DEPLOYER_BYTECODE : '';
+var VANITY_FACTORY_ABI = (typeof VANITY_DEPLOYER_ABI !== 'undefined') ? VANITY_DEPLOYER_ABI : [];
+
+async function ensureVanityFactory(signer) {
+  if (VANITY_FACTORY_ADDR) return VANITY_FACTORY_ADDR;
+  // Auto-deploy VanityDeployer
+  setModalStatus((currentLang==='zh'?'🚀 部署 CREATE2 工厂合约...':'🚀 Deploying CREATE2 factory...'));
+  try {
+    var factoryFactory = new ethers.ContractFactory(VANITY_FACTORY_ABI, VANITY_FACTORY_BYTECODE, signer);
+    var factoryContract = await factoryFactory.deploy();
+    setModalStatus((currentLang==='zh'?'等待工厂合约确认...':'Waiting for factory confirmation...'));
+    var factoryReceipt = await factoryContract.deployTransaction.wait(1);
+    VANITY_FACTORY_ADDR = factoryContract.address;
+    localStorage.setItem('vanity_factory_addr', VANITY_FACTORY_ADDR);
+    setModalStatus((currentLang==='zh'?'✅ 工厂合约已部署: ':'✅ Factory deployed: ') + VANITY_FACTORY_ADDR.slice(0,10)+'...');
+    return VANITY_FACTORY_ADDR;
+  } catch(e) {
+    throw new Error('Failed to deploy VanityDeployer factory: ' + (e.reason||e.message));
+  }
+}
+
+async function findSaltForSuffix(suffix, creationCode, factoryAddr) {
   suffix = suffix.toLowerCase();
-  // Salt 循环：从随机值开始
   var salt = ethers.utils.randomBytes(32);
   var attempts = 0;
   var maxAttempts = suffix.length <= 3 ? 50000 : (suffix.length <= 4 ? 200000 : 800000);
   setModalStatus('🔍 ' + (currentLang==='zh'?'碰撞尾号: ':'Vanity mining: ') + '0x...' + suffix + ' (' + (currentLang==='zh'?'尝试':'attempts') + ' 0)');
+  var codeHash = ethers.utils.keccak256(creationCode);
   while (attempts < maxAttempts) {
-    // 计算 CREATE2 地址: keccak256(0xFF + factoryAddr + salt + keccak256(creationCode))
     var saltHex = ethers.utils.hexlify(salt);
-    var codeHash = ethers.utils.keccak256(creationCode);
-    // 手动计算 CREATE2 地址
     var encoded = ethers.utils.solidityPack(
       ['bytes1','address','bytes32','bytes32'],
-      ['0xff', VANITY_FACTORY_ADDR, saltHex, codeHash]
+      ['0xff', factoryAddr, saltHex, codeHash]
     );
-    var addr = '0x' + ethers.utils.keccak256(encoded).slice(26); // 取后 20 字节
+    var addr = '0x' + ethers.utils.keccak256(encoded).slice(26);
     if (addr.toLowerCase().endsWith(suffix)) {
       return { salt: saltHex, address: addr };
     }
-    // salt + 1
     var saltBN = ethers.BigNumber.from(saltHex);
     salt = ethers.utils.arrayify(saltBN.add(1).toHexString());
     if (salt.length < 32) { salt = ethers.utils.zeroPad(salt, 32); }
     attempts++;
     if (attempts % 10000 === 0) {
       setModalStatus('🔍 ' + (currentLang==='zh'?'碰撞尾号: 0x...':'Vanity mining: 0x...') + suffix + ' (' + attempts + ' ' + (currentLang==='zh'?'次':'attempts') + ')');
-      await new Promise(r => setTimeout(r, 0)); // 让 UI 更新
+      await new Promise(r => setTimeout(r, 0));
     }
   }
   throw new Error('Vanity suffix not found within ' + maxAttempts + ' attempts. Try a shorter suffix.');
 }
 
-async function deployWithCreate2(creationCode, saltHex, signer) {
-  if (!VANITY_FACTORY_ADDR) {
-    alert((currentLang==='zh'?'请先部署 VanityDeployer 工厂合约并填入地址。':'Please deploy VanityDeployer factory and set VANITY_FACTORY_ADDR.'));
-    return null;
-  }
-  var factoryABI = [{"inputs":[{"name":"bytecode","type":"bytes"},{"name":"salt","type":"bytes32"}],"name":"deploy","outputs":[{"name":"addr","type":"address"}],"stateMutability":"payable","type":"function"}];
-  var factory = new ethers.Contract(VANITY_FACTORY_ADDR, factoryABI, signer);
+async function deployWithCreate2(creationCode, saltHex, factoryAddr, signer) {
+  var factoryABI = [{"inputs":[{"name":"bytecode","type":"bytes"},{"name":"salt","type":"bytes32"}],"name":"deploy","outputs":[{"name":"addr","type":"address"}],"stateMutability":"nonpayable","type":"function"}];
+  var factory = new ethers.Contract(factoryAddr, factoryABI, signer);
   setModalStatus((currentLang==='zh'?'部署中...':'Deploying...'));
   var tx = await factory.deploy(creationCode, saltHex, { value: 0 });
   setModalStatus((currentLang==='zh'?'等待确认...':'Waiting for confirmation...'));
   var receipt = await tx.wait(1);
-  // 从事务日志里找部署地址
   var deployedAddr = null;
   for (var i = 0; i < receipt.logs.length; i++) {
     var log = receipt.logs[i];
-    if (log.address.toLowerCase() === VANITY_FACTORY_ADDR.toLowerCase() && log.topics.length >= 2) {
+    if (log.address.toLowerCase() === factoryAddr.toLowerCase() && log.topics.length >= 2) {
       deployedAddr = '0x' + log.topics[1].slice(26);
       break;
     }
   }
-  // Fallback: 用 CREATE2 公式算
   if (!deployedAddr) {
     var codeHash = ethers.utils.keccak256(creationCode);
-    var encoded = ethers.utils.solidityPack(['bytes1','address','bytes32','bytes32'],['0xff',VANITY_FACTORY_ADDR,saltHex,codeHash]);
+    var encoded = ethers.utils.solidityPack(['bytes1','address','bytes32','bytes32'],['0xff',factoryAddr,saltHex,codeHash]);
     deployedAddr = '0x' + ethers.utils.keccak256(encoded).slice(26);
   }
   return deployedAddr;
@@ -1151,12 +1163,13 @@ async function deployToken(){
 
     var deployedContract = null;
 
-    // Vanity 部署（需先部署 VanityDeployer 工厂合约并填入 VANITY_FACTORY_ADDR）
-    if (suffix.length >= 1 && suffix.length <= 8 && VANITY_FACTORY_ADDR) {
-      setModalStatus((currentLang==='zh'?'🔍 碰撞尾号中...':'🔍 Vanity mining...'));
+    // Vanity 部署：自动部署工厂 + CREATE2 碰撞
+    if (suffix.length >= 1 && suffix.length <= 8) {
       try {
-        var vanityResult = await findSaltForSuffix(suffix, creationCode, currentAccount);
-        deployedContract = await deployWithCreate2(creationCode, vanityResult.salt, signer);
+        var factoryAddr = await ensureVanityFactory(signer);
+        setModalStatus((currentLang==='zh'?'🔍 碰撞尾号中...':'🔍 Vanity mining...'));
+        var vanityResult = await findSaltForSuffix(suffix, creationCode, factoryAddr);
+        deployedContract = await deployWithCreate2(creationCode, vanityResult.salt, factoryAddr, signer);
       } catch(e) {
         if (confirm((currentLang==='zh'?'尾号碰撞失败或超时：':'Vanity mining failed or timeout: ') + e.message + '\n\n' + (currentLang==='zh'?'是否用随机地址继续部署？':'Deploy with random address instead?'))) {
           suffix = ''; // 降级为普通部署
