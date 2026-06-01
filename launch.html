@@ -71,6 +71,13 @@
     .logo-name strong { font-size: 1.05rem; font-weight: 700; color: var(--gold); letter-spacing: 1.5px; display: block; line-height: 1.1; }
     .logo-name span { font-size: .62rem; color: var(--muted); letter-spacing: 2.5px; text-transform: uppercase; }
     .nav-right { display: flex; align-items: center; gap: 10px; }
+    .lang-toggle {
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+      padding: 6px 14px; border-radius: 50px; cursor: pointer;
+      font-family: var(--font); font-size: .78rem; font-weight: 600;
+      transition: all .2s; letter-spacing: .5px;
+    }
+    .lang-toggle:hover { border-color: var(--gold); color: var(--gold); }
     .btn {
       display: inline-flex; align-items: center; gap: 7px;
       padding: 9px 20px; border-radius: 8px;
@@ -350,14 +357,14 @@
     }
   </style>
   <script src="ethers.umd.min.js"></script>
-  <script src="contract_data.js?v=20260526r2"></script>
+  <script src="contract_data.js?v=20260601r1"></script>
   <script>
     if(typeof CONTRACT_DATA !== 'undefined' && typeof CONTRACT_DATA.BYTECODE === 'string'){
       var bcLen = CONTRACT_DATA.BYTECODE.length;
-      if(bcLen !== 27554){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 27554'); }
+      if(Math.abs(bcLen - 27554) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen); }
     }
   </script>
-  <script src="factory_data.js?v=20260526r2"></script>
+  <script src="factory_data.js?v=20260601r1"></script>
 </head>
 <body>
 
@@ -372,6 +379,7 @@
       </div>
     </a>
     <div class="nav-right">
+      <button class="lang-toggle" id="btn-lang" onclick="toggleLang()">中文</button>
       <span class="wallet-chip" id="wallet-addr-display"></span>
       <button class="btn btn-outline" id="btn-connect" onclick="connectWallet()">Connect Wallet</button>
       <button class="btn btn-outline" id="btn-admin-nav" onclick="openAdminPanelByAddress()" style="display:none;border-color:rgba(245,200,66,.4);color:var(--gold)">⚙ Manage</button>
@@ -381,31 +389,31 @@
 
 <!-- ═══ HERO ═══ -->
 <div class="page-hero">
-  <div class="hero-label">Token Factory · BNB Chain</div>
-  <h1>Deploy Your <span>Token</span></h1>
-  <p>Fill in the parameters below. Your audited smart contract goes live on BNB Chain in under 60 seconds.</p>
+  <div class="hero-label" data-i18n="hero.label">Token Factory · BNB Chain</div>
+  <h1 data-i18n="hero.title">Deploy Your <span>Token</span></h1>
+  <p data-i18n="hero.desc">Fill in the parameters below. Your audited smart contract goes live on BNB Chain in under 60 seconds.</p>
 </div>
 
 <!-- ═══ STEPS ═══ -->
 <div class="steps-bar" id="steps-bar">
   <div class="step-item">
     <div class="step-circle active" id="sc1">01</div>
-    <div class="step-label active" id="sl1">Connect</div>
+    <div class="step-label active" id="sl1" data-i18n="step.1">Connect</div>
   </div>
   <div class="step-line" id="line1"></div>
   <div class="step-item">
     <div class="step-circle" id="sc2">02</div>
-    <div class="step-label" id="sl2">Configure</div>
+    <div class="step-label" id="sl2" data-i18n="step.2">Configure</div>
   </div>
   <div class="step-line" id="line2"></div>
   <div class="step-item">
     <div class="step-circle" id="sc3">03</div>
-    <div class="step-label" id="sl3">Sign TX</div>
+    <div class="step-label" id="sl3" data-i18n="step.3">Sign TX</div>
   </div>
   <div class="step-line" id="line3"></div>
   <div class="step-item">
     <div class="step-circle" id="sc4">04</div>
-    <div class="step-label" id="sl4">Live 🟡</div>
+    <div class="step-label" id="sl4" data-i18n="step.4">Live 🟡</div>
   </div>
 </div>
 
@@ -415,39 +423,39 @@
   <!-- Wallet Banner -->
   <div class="wallet-banner" id="wallet-banner">
     <span style="font-size:1.3rem;flex-shrink:0">⚠️</span>
-    <p>Connect your wallet to deploy a token on BNB Chain.</p>
-    <button class="btn btn-gold" style="flex-shrink:0;padding:9px 20px;font-size:.85rem" onclick="connectWallet()">Connect Wallet</button>
+    <p data-i18n="wallet.banner">Connect your wallet to deploy a token on BNB Chain.</p>
+    <button class="btn btn-gold" style="flex-shrink:0;padding:9px 20px;font-size:.85rem" onclick="connectWallet()" data-i18n="wallet.connect">Connect Wallet</button>
   </div>
 
   <!-- 01 · Token Info -->
   <div class="form-card">
     <div class="card-header">
       <div class="card-icon">🍞</div>
-      Token Identity
-      <span class="card-num">01 / 06</span>
+      <span data-i18n="card.identity">Token Identity</span>
+      <span class="card-num">01 / 07</span>
     </div>
 
     <div class="form-row cols-2">
       <div class="form-group">
-        <label class="form-label">Token Name <span class="required">*</span></label>
+        <label class="form-label"><span data-i18n="field.name">Token Name</span> <span class="required">*</span></label>
         <input type="text" id="tokenName" placeholder="e.g. Bread Coin" maxlength="64" />
-        <span class="form-hint">Full display name of your token</span>
+        <span class="form-hint" data-i18n="hint.name">Full display name of your token</span>
       </div>
       <div class="form-group">
-        <label class="form-label">Symbol <span class="required">*</span></label>
+        <label class="form-label"><span data-i18n="field.symbol">Symbol</span> <span class="required">*</span></label>
         <input type="text" id="tokenSymbol" placeholder="e.g. BREAD" maxlength="10" oninput="this.value=this.value.toUpperCase()" />
-        <span class="form-hint">3–8 uppercase letters (ticker)</span>
+        <span class="form-hint" data-i18n="hint.symbol">3–8 uppercase letters (ticker)</span>
       </div>
     </div>
 
     <div class="form-row cols-2">
       <div class="form-group">
-        <label class="form-label">Total Supply <span class="required">*</span></label>
+        <label class="form-label"><span data-i18n="field.supply">Total Supply</span> <span class="required">*</span></label>
         <input type="number" id="totalSupply" placeholder="1000000000" min="1" />
-        <span class="form-hint">Total number of tokens to create</span>
+        <span class="form-hint" data-i18n="hint.supply">Total number of tokens to create</span>
       </div>
       <div class="form-group">
-        <label class="form-label">Network <span class="required">*</span></label>
+        <label class="form-label"><span data-i18n="field.network">Network</span> <span class="required">*</span></label>
         <div class="chain-options">
           <div class="chain-opt selected" onclick="selectChain('bsc',this)">
             <div class="chain-dot"></div>
@@ -466,13 +474,13 @@
 
     <!-- Image Upload -->
     <div class="form-group">
-      <label class="form-label">Token Logo <span style="font-size:.72rem;color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <label class="form-label"><span data-i18n="field.logo">Token Logo</span> <span style="font-size:.72rem;color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
       <div class="upload-zone" id="upload-zone">
         <input type="file" id="logoFile" accept="image/*" onchange="handleLogoUpload(event)" />
         <div id="upload-placeholder">
           <div class="upload-icon">🖼️</div>
-          <div class="upload-text">Drop your logo here or click to browse</div>
-          <div class="upload-sub">PNG, JPG, GIF — max 500 KB · Will be displayed at 200×200px</div>
+          <div class="upload-text" data-i18n="upload.text">Drop your logo here or click to browse</div>
+          <div class="upload-sub" data-i18n="upload.sub">PNG, JPG, GIF — max 500 KB · Will be displayed at 200×200px</div>
         </div>
         <div class="upload-preview" id="upload-preview">
           <img id="preview-img" src="" alt="preview" />
@@ -483,106 +491,120 @@
 
     <!-- Description -->
     <div class="form-group" style="margin-top:16px">
-      <label class="form-label">Description <span style="font-size:.72rem;color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <label class="form-label"><span data-i18n="field.desc">Description</span> <span style="font-size:.72rem;color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
       <textarea id="tokenDesc" placeholder="Tell the community what your token is about..." maxlength="280"></textarea>
-      <span class="form-hint">Max 280 characters · Displayed on the token card</span>
+      <span class="form-hint" data-i18n="hint.desc">Max 280 characters · Displayed on the token card</span>
     </div>
   </div>
 
-  <!-- 02 · Mint & Presale -->
+  <!-- 02 · Owner Address -->
+  <div class="form-card">
+    <div class="card-header">
+      <div class="card-icon">🔑</div>
+      <span data-i18n="card.owner">Contract Owner</span>
+      <span class="card-num">02 / 07</span>
+    </div>
+    <div class="form-group">
+      <label class="form-label"><span data-i18n="field.owner">Owner Address</span> <span style="font-size:.72rem;color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <input type="text" id="ownerAddr" placeholder="0x... (leave blank for your connected wallet)" />
+      <span class="form-hint" data-i18n="hint.owner">Leave blank to use your connected wallet. You can set a custom vanity address here (e.g. ending with 6666).</span>
+    </div>
+  </div>
+
+  <!-- 03 · Mint & Presale -->
   <div class="form-card">
     <div class="card-header">
       <div class="card-icon">💰</div>
-      Mint & Presale Settings
-      <span class="card-num">02 / 06</span>
+      <span data-i18n="card.presale">Mint & Presale Settings</span>
+      <span class="card-num">03 / 07</span>
     </div>
 
     <div class="form-row cols-2">
       <div class="form-group">
-        <label class="form-label">Mint Price (BNB) <span class="required">*</span></label>
+        <label class="form-label"><span data-i18n="field.mintPrice">Mint Price (BNB)</span> <span class="required">*</span></label>
         <input type="number" id="mintCost" placeholder="0.1" step="0.001" min="0.001" />
-        <span class="form-hint">BNB required per mint transaction</span>
+        <span class="form-hint" data-i18n="hint.mintPrice">BNB required per mint transaction</span>
       </div>
       <div class="form-group">
-        <label class="form-label">Fundraise Target (BNB) <span class="required">*</span></label>
+        <label class="form-label"><span data-i18n="field.fillBNB">Fundraise Target (BNB)</span> <span class="required">*</span></label>
         <input type="number" id="fillBNB" placeholder="10" step="0.1" min="0.1" />
-        <span class="form-hint">Total BNB to collect before trading opens</span>
+        <span class="form-hint" data-i18n="hint.fillBNB">Total BNB to collect before trading opens</span>
       </div>
     </div>
 
     <div class="form-row cols-2">
       <div class="form-group">
-        <label class="form-label">Presale Allocation (%) <span class="required">*</span></label>
+        <label class="form-label"><span data-i18n="field.presalePct">Presale Allocation (%)</span> <span class="required">*</span></label>
         <input type="number" id="presalePct" placeholder="50" min="1" max="99" />
-        <span class="form-hint">% of total supply sold during mint phase</span>
+        <span class="form-hint" data-i18n="hint.presalePct">% of total supply sold during mint phase</span>
       </div>
       <div class="form-group">
-        <label class="form-label">Min Hold for Dividend <span class="required">*</span></label>
+        <label class="form-label"><span data-i18n="field.minHold">Min Hold for Dividend</span> <span class="required">*</span></label>
         <input type="number" id="minHold" placeholder="1000" min="0" />
-        <span class="form-hint">Min tokens to hold to receive BNB dividends</span>
+        <span class="form-hint" data-i18n="hint.minHold">Min tokens to hold to receive BNB dividends</span>
       </div>
     </div>
 
     <div class="form-group">
       <label class="form-label" style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" id="wlOnly" style="width:auto;margin:0;accent-color:var(--gold)" />
-        Whitelist-only Mint
+        <span data-i18n="field.whitelist">Whitelist-only Mint</span>
       </label>
-      <span class="form-hint">Only whitelisted addresses can mint during presale phase</span>
+      <span class="form-hint" data-i18n="hint.whitelist">Only whitelisted addresses can mint during presale phase</span>
     </div>
   </div>
 
-  <!-- 03 · Tax Rates -->
+  <!-- 04 · Tax Rates -->
   <div class="form-card">
     <div class="card-header">
       <div class="card-icon">📊</div>
-      Tax Rates
-      <span class="card-num">03 / 06</span>
+      <span data-i18n="card.tax">Tax Rates</span>
+      <span class="card-num">04 / 07</span>
     </div>
 
     <div class="tax-row">
       <div class="slider-group">
         <div class="slider-label-row">
-          <span class="lbl">Buy Tax</span>
+          <span class="lbl" data-i18n="field.buyTax">Buy Tax</span>
           <span class="slider-val" id="buy-val">10.0%</span>
         </div>
         <input type="range" id="buyTax" min="0" max="25" step="0.5" value="10"
           oninput="updateSlider(this,'buy-val')" style="--pct:40%" />
-        <span class="form-hint">Tax on each buy transaction (max 25%)</span>
+        <span class="form-hint" data-i18n="hint.buyTax">Tax on each buy transaction (max 25%)</span>
       </div>
       <div class="slider-group">
         <div class="slider-label-row">
-          <span class="lbl">Sell Tax</span>
+          <span class="lbl" data-i18n="field.sellTax">Sell Tax</span>
           <span class="slider-val" id="sell-val">10.0%</span>
         </div>
         <input type="range" id="sellTax" min="0" max="25" step="0.5" value="10"
           oninput="updateSlider(this,'sell-val')" style="--pct:40%" />
-        <span class="form-hint">Tax on each sell transaction (max 25%)</span>
+        <span class="form-hint" data-i18n="hint.sellTax">Tax on each sell transaction (max 25%)</span>
       </div>
     </div>
 
-    <div class="protect-info" style="margin-top:20px">
-      ⚙️ <strong>Additional Fees:</strong> 1% PANDA buyback reward is automatically added on top of buy/sell tax. 0.05% random airdrop tax is also applied per trade.
+    <div class="protect-info" style="margin-top:20px" data-i18n="info.tax">
+      ⚙️ <strong>Additional Fees:</strong> 0.05% random airdrop tax is applied per trade.
     </div>
   </div>
 
-  <!-- 04 · Tax Allocation -->
+  <!-- 05 · Tax Allocation -->
   <div class="form-card">
     <div class="card-header">
       <div class="card-icon">🥧</div>
-      Tax Distribution
-      <span class="card-num">04 / 06</span>
+      <span data-i18n="card.alloc">Tax Distribution</span>
+      <span class="card-num">05 / 07</span>
     </div>
 
     <div class="alloc-warning">
-      ⚠️ All four percentages must sum to exactly <strong>100%</strong>
+      <span data-i18n="alloc.warn">⚠️ All four percentages must sum to exactly <strong>100%</strong></span>
     </div>
 
     <div class="alloc-grid">
       <div class="alloc-item">
         <div class="alloc-header">
           <div class="alloc-dot" style="background:#f5c842"></div>
-          <span class="alloc-name">Marketing Wallet</span>
+          <span class="alloc-name" data-i18n="alloc.marketing">Marketing Wallet</span>
           <span class="alloc-pct" id="a-mkt-pct">0%</span>
         </div>
         <div class="alloc-bar-wrap"><div class="alloc-bar" id="a-mkt-bar" style="background:#f5c842;width:0%"></div></div>
@@ -591,7 +613,7 @@
       <div class="alloc-item">
         <div class="alloc-header">
           <div class="alloc-dot" style="background:#ef4444"></div>
-          <span class="alloc-name">Burn (→ Dead Address)</span>
+          <span class="alloc-name" data-i18n="alloc.burn">Burn (→ Dead Address)</span>
           <span class="alloc-pct" id="a-burn-pct">0%</span>
         </div>
         <div class="alloc-bar-wrap"><div class="alloc-bar" id="a-burn-bar" style="background:#ef4444;width:0%"></div></div>
@@ -600,7 +622,7 @@
       <div class="alloc-item">
         <div class="alloc-header">
           <div class="alloc-dot" style="background:#34d399"></div>
-          <span class="alloc-name">BNB Dividends (Holders)</span>
+          <span class="alloc-name" data-i18n="alloc.dividend">BNB Dividends (Holders)</span>
           <span class="alloc-pct" id="a-div-pct">0%</span>
         </div>
         <div class="alloc-bar-wrap"><div class="alloc-bar" id="a-div-bar" style="background:#34d399;width:0%"></div></div>
@@ -609,7 +631,7 @@
       <div class="alloc-item">
         <div class="alloc-header">
           <div class="alloc-dot" style="background:#818cf8"></div>
-          <span class="alloc-name">Auto-Liquidity Pool</span>
+          <span class="alloc-name" data-i18n="alloc.liquidity">Auto-Liquidity Pool</span>
           <span class="alloc-pct" id="a-liq-pct">0%</span>
         </div>
         <div class="alloc-bar-wrap"><div class="alloc-bar" id="a-liq-bar" style="background:#818cf8;width:0%"></div></div>
@@ -618,39 +640,34 @@
     </div>
 
     <div class="alloc-total-row">
-      <span class="alloc-total-label">Total Allocation</span>
+      <span class="alloc-total-label" data-i18n="alloc.total">Total Allocation</span>
       <span class="alloc-total-val" id="alloc-total">0%</span>
     </div>
   </div>
 
-  <!-- 05 · Wallets -->
+  <!-- 06 · Wallets -->
   <div class="form-card">
     <div class="card-header">
       <div class="card-icon">👛</div>
-      Wallet Addresses
-      <span class="card-num">05 / 06</span>
+      <span data-i18n="card.wallets">Wallet Addresses</span>
+      <span class="card-num">06 / 07</span>
     </div>
 
     <div class="form-group">
-      <label class="form-label">Marketing Wallet <span class="required">*</span></label>
+      <label class="form-label"><span data-i18n="field.marketingWallet">Marketing Wallet</span> <span class="required">*</span></label>
       <input type="text" id="marketingWallet" placeholder="0x... (defaults to your connected wallet)" />
-      <span class="form-hint">Receives the marketing portion of collected taxes</span>
-    </div>
-    <div class="form-group" style="margin-top:14px">
-      <label class="form-label">Dividend Token Address <span style="font-size:.72rem;color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(optional, legacy)</span></label>
-      <input type="text" id="dividendToken" placeholder="0x0000000000000000000000000000000000000000" />
-      <span class="form-hint">Leave blank — BNB dividends are native in this contract</span>
+      <span class="form-hint" data-i18n="hint.marketingWallet">Receives the marketing portion of collected taxes</span>
     </div>
   </div>
 
-  <!-- 06 · Social Links -->
+  <!-- 07 · Social Links -->
   <div class="form-card">
     <div class="card-header">
       <div class="card-icon">🔗</div>
-      Social Links
-      <span class="card-num">06 / 06</span>
+      <span data-i18n="card.social">Social Links</span>
+      <span class="card-num">07 / 07</span>
     </div>
-    <span class="form-hint" style="display:block;margin-bottom:18px">All fields optional. Links appear on your token card.</span>
+    <span class="form-hint" style="display:block;margin-bottom:18px" data-i18n="hint.social">All fields optional. Links appear on your token card.</span>
     <div class="link-grid">
       <div class="link-wrap">
         <span class="link-icon">🌐</span>
@@ -674,9 +691,9 @@
   <!-- Deploy Button -->
   <div class="submit-zone">
     <button class="btn-launch" id="btn-launch" onclick="deployToken()" disabled>
-      🍞 Bake & Deploy Token
+      🍞 <span data-i18n="btn.deploy">Bake & Deploy Token</span>
     </button>
-    <p class="launch-hint">Deploying costs ~0.01 BNB in gas fees · Contract is verified on BSCScan automatically</p>
+    <p class="launch-hint" data-i18n="hint.deploy">Deploying costs ~0.01 BNB in gas fees · Contract is verified on BSCScan automatically</p>
   </div>
 
 </main>
@@ -738,10 +755,156 @@
 </div>
 
 <script>
+/* ─── I18N ─── */
+var I18N = {
+  en: {
+    'hero.label':    'Token Factory · BNB Chain',
+    'hero.title':    'Deploy Your Token',
+    'hero.desc':     'Fill in the parameters below. Your audited smart contract goes live on BNB Chain in under 60 seconds.',
+    'step.1':        'Connect',
+    'step.2':        'Configure',
+    'step.3':        'Sign TX',
+    'step.4':        'Live 🟡',
+    'wallet.banner': 'Connect your wallet to deploy a token on BNB Chain.',
+    'wallet.connect': 'Connect Wallet',
+    'card.identity': 'Token Identity',
+    'field.name':    'Token Name',
+    'hint.name':     'Full display name of your token',
+    'field.symbol':  'Symbol',
+    'hint.symbol':   '3–8 uppercase letters (ticker)',
+    'field.supply':  'Total Supply',
+    'hint.supply':   'Total number of tokens to create',
+    'field.network': 'Network',
+    'upload.text':   'Drop your logo here or click to browse',
+    'upload.sub':    'PNG, JPG, GIF — max 500 KB · Will be displayed at 200×200px',
+    'field.desc':    'Description',
+    'hint.desc':     'Max 280 characters · Displayed on the token card',
+    'card.owner':    'Contract Owner',
+    'field.owner':   'Owner Address',
+    'hint.owner':    'Leave blank to use your connected wallet. You can set a custom vanity address here (e.g. ending with 6666).',
+    'card.presale':  'Mint & Presale Settings',
+    'field.mintPrice':'Mint Price (BNB)',
+    'hint.mintPrice':'BNB required per mint transaction',
+    'field.fillBNB': 'Fundraise Target (BNB)',
+    'hint.fillBNB':  'Total BNB to collect before trading opens',
+    'field.presalePct':'Presale Allocation (%)',
+    'hint.presalePct':'% of total supply sold during mint phase',
+    'field.minHold': 'Min Hold for Dividend',
+    'hint.minHold':  'Min tokens to hold to receive BNB dividends',
+    'field.whitelist':'Whitelist-only Mint',
+    'hint.whitelist':'Only whitelisted addresses can mint during presale phase',
+    'card.tax':      'Tax Rates',
+    'field.buyTax':  'Buy Tax',
+    'hint.buyTax':   'Tax on each buy transaction (max 25%)',
+    'field.sellTax': 'Sell Tax',
+    'hint.sellTax':  'Tax on each sell transaction (max 25%)',
+    'info.tax':      '⚙️ <strong>Additional Fees:</strong> 0.05% random airdrop tax is applied per trade.',
+    'card.alloc':    'Tax Distribution',
+    'alloc.warn':    '⚠️ All four percentages must sum to exactly <strong>100%</strong>',
+    'alloc.marketing':'Marketing Wallet',
+    'alloc.burn':    'Burn (→ Dead Address)',
+    'alloc.dividend':'BNB Dividends (Holders)',
+    'alloc.liquidity':'Auto-Liquidity Pool',
+    'alloc.total':   'Total Allocation',
+    'card.wallets':  'Wallet Addresses',
+    'field.marketingWallet':'Marketing Wallet',
+    'hint.marketingWallet':'Receives the marketing portion of collected taxes',
+    'card.social':   'Social Links',
+    'hint.social':   'All fields optional. Links appear on your token card.',
+    'btn.deploy':    'Bake & Deploy Token',
+    'hint.deploy':   'Deploying costs ~0.01 BNB in gas fees · Contract is verified on BSCScan automatically',
+    'modal.wait':    'Baking Your Token...',
+    'modal.sign':    'Please sign the transaction in your wallet.',
+    'modal.success': 'Token Deployed!',
+    'modal.live':    'Your contract is live on BNB Chain. Mint is now open.',
+    'modal.fail':    'Deployment Failed',
+  },
+  zh: {
+    'hero.label':    '代币工厂 · BNB 链',
+    'hero.title':    '发射你的代币',
+    'hero.desc':     '填写以下参数，你的审计智能合约将在 60 秒内上线 BNB 链。',
+    'step.1':        '连接',
+    'step.2':        '配置',
+    'step.3':        '签名',
+    'step.4':        '上线 🟡',
+    'wallet.banner': '请连接钱包以在 BNB 链上发射代币。',
+    'wallet.connect': '连接钱包',
+    'card.identity': '代币身份',
+    'field.name':    '代币名称',
+    'hint.name':     '代币的完整显示名称',
+    'field.symbol':  '代币符号',
+    'hint.symbol':   '3–8 位大写字母（代码）',
+    'field.supply':  '总供应量',
+    'hint.supply':   '创建的代币总数量',
+    'field.network': '网络',
+    'upload.text':   '拖放 Logo 或点击浏览',
+    'upload.sub':    'PNG、JPG、GIF — 最大 500 KB · 显示为 200×200px',
+    'field.desc':    '描述',
+    'hint.desc':     '最多 280 个字符 · 显示在代币卡片上',
+    'card.owner':    '合约管理员',
+    'field.owner':   '管理员地址',
+    'hint.owner':    '留空则使用当前连接钱包。可填写自定义靓号地址（如尾号 6666）。',
+    'card.presale':  'Mint & 预售设置',
+    'field.mintPrice':'Mint 价格 (BNB)',
+    'hint.mintPrice':'每次 Mint 交易需要的 BNB',
+    'field.fillBNB': '募资目标 (BNB)',
+    'hint.fillBNB':  '开放交易前需募集的总 BNB 数量',
+    'field.presalePct':'预售分配 (%)',
+    'hint.presalePct':'预售阶段出售的代币占总供应量百分比',
+    'field.minHold': '分红最低持有量',
+    'hint.minHold':  '获得 BNB 分红需持有的最低代币数量',
+    'field.whitelist':'仅白名单 Mint',
+    'hint.whitelist':'预售阶段仅白名单地址可以 Mint',
+    'card.tax':      '税率设置',
+    'field.buyTax':  '买入税',
+    'hint.buyTax':   '每笔买入交易的税率（最高 25%）',
+    'field.sellTax': '卖出税',
+    'hint.sellTax':  '每笔卖出交易的税率（最高 25%）',
+    'info.tax':      '⚙️ <strong>附加费用：</strong>每笔交易额外收取 0.05% 随机空投税。',
+    'card.alloc':    '税收分配',
+    'alloc.warn':    '⚠️ 四个百分比之和必须恰好为 <strong>100%</strong>',
+    'alloc.marketing':'营销钱包',
+    'alloc.burn':    '燃烧（→ 黑洞地址）',
+    'alloc.dividend':'BNB 分红（持币人）',
+    'alloc.liquidity':'自动流动性池',
+    'alloc.total':   '总分配',
+    'card.wallets':  '钱包地址',
+    'field.marketingWallet':'营销钱包',
+    'hint.marketingWallet':'接收税收中营销部分的钱包地址',
+    'card.social':   '社交链接',
+    'hint.social':   '所有字段可选。链接将显示在代币卡片上。',
+    'btn.deploy':    '🍞 烘焙 & 发射代币',
+    'hint.deploy':   '发射约消耗 0.01 BNB Gas 费 · 合约将自动在 BSCScan 上验证',
+    'modal.wait':    '正在烘焙你的代币...',
+    'modal.sign':    '请在钱包中签名交易，不要关闭此窗口。',
+    'modal.success': '代币发射成功！',
+    'modal.live':    '你的合约已上线 BNB 链，Mint 现已开放。',
+    'modal.fail':    '发射失败',
+  }
+};
+
+var currentLang = 'en';
+
+function toggleLang() {
+  currentLang = (currentLang === 'en') ? 'zh' : 'en';
+  applyLang();
+}
+
+function applyLang() {
+  var dict = I18N[currentLang];
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    if (dict[key]) el.innerHTML = dict[key];
+  });
+  // Update lang toggle button text
+  document.getElementById('btn-lang').textContent = (currentLang === 'en') ? '中文' : 'EN';
+  // Update html lang
+  document.documentElement.lang = (currentLang === 'en') ? 'en' : 'zh';
+}
+
 /* ─── CONSTANTS ─── */
 var BSC_CHAIN = {chainId:'0x38',chainName:'BNB Smart Chain',rpcUrls:['https://bsc-dataseed.binance.org/'],nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},blockExplorerUrls:['https://bscscan.com/']};
 var BSC_TESTNET = {chainId:'0x61',chainName:'BSC Testnet',rpcUrls:['https://data-seed-prebsc-1-s1.binance.org:8545/'],nativeCurrency:{name:'tBNB',symbol:'tBNB',decimals:18},blockExplorerUrls:['https://testnet.bscscan.com/']};
-var FIXED_OWNER = '0x55b486df3acD881CC8A006BF45cb9A7353672E7a';
 var FACTORY_ADDR = '0x061B33E5f016C2433c828dA521Ce37000aa18c34';
 var API_BASE = (location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'http://localhost:3000' : 'https://'+location.hostname;
 
@@ -768,14 +931,14 @@ async function connectWallet(){
     var chip = document.getElementById('wallet-addr-display');
     chip.textContent = currentAccount.slice(0,6)+'…'+currentAccount.slice(-4);
     chip.style.display = 'inline-flex';
-    document.getElementById('btn-connect').textContent = 'Connected ✓';
+    document.getElementById('btn-connect').textContent = (currentLang==='zh') ? '已连接 ✓' : 'Connected ✓';
     document.getElementById('btn-connect').style.borderColor = 'rgba(245,200,66,.4)';
     document.getElementById('btn-connect').style.color = 'var(--gold)';
     document.getElementById('wallet-banner').classList.add('hidden');
     document.getElementById('btn-launch').disabled = false;
     setStep(2);
     if(document.getElementById('marketingWallet').value === '') {
-      document.getElementById('marketingWallet').placeholder = currentAccount + ' (your wallet)';
+      document.getElementById('marketingWallet').placeholder = currentAccount + (currentLang==='zh' ? ' (你的钱包)' : ' (your wallet)');
     }
     wp.on('accountsChanged', function(a){ if(!a.length) location.reload(); else { currentAccount=a[0]; chip.textContent=currentAccount.slice(0,6)+'…'+currentAccount.slice(-4); } });
     wp.on('chainChanged', function(){ location.reload(); });
@@ -860,23 +1023,26 @@ async function deployToken(){
   var divBps  = parseInt(document.getElementById('a-div').value) || 0;
   var liqBps  = parseInt(document.getElementById('a-liq').value) || 0;
   var fundAddr = document.getElementById('marketingWallet').value.trim() || currentAccount;
-  var divToken = document.getElementById('dividendToken').value.trim() || '0x0000000000000000000000000000000000000000';
+  var divToken = '0x0000000000000000000000000000000000000000';
   var minHold  = parseInt(document.getElementById('minHold').value) || 0;
   var presalePct = parseInt(document.getElementById('presalePct').value) || 50;
   var wlOnly  = document.getElementById('wlOnly').checked;
   var desc    = document.getElementById('tokenDesc').value.trim();
-  var ownerAddr = currentAccount;
+  // Owner: use form value if provided, else connected wallet
+  var ownerInput = document.getElementById('ownerAddr').value.trim();
+  var ownerAddr = (ownerInput && ownerInput.length === 42) ? ownerInput : '0x0000000000000000000000000000000000000000';
 
   // Validation
-  if(!name){ alert('Token name is required.'); return; }
-  if(!symbol){ alert('Token symbol is required.'); return; }
-  if(supply <= 0){ alert('Total supply must be greater than 0.'); return; }
-  if(mint <= 0){ alert('Mint price must be greater than 0.'); return; }
-  if(fill <= 0){ alert('Fundraise target must be greater than 0.'); return; }
-  if(fill < mint){ alert('Fundraise target must be ≥ mint price.'); return; }
-  if(presalePct < 1 || presalePct > 99){ alert('Presale allocation must be between 1% and 99%.'); return; }
+  if(!name){ alert((currentLang==='zh'?'请输入代币名称。':'Token name is required.')); return; }
+  if(!symbol){ alert((currentLang==='zh'?'请输入代币符号。':'Token symbol is required.')); return; }
+  if(supply <= 0){ alert((currentLang==='zh'?'总供应量必须大于 0。':'Total supply must be greater than 0.')); return; }
+  if(mint <= 0){ alert((currentLang==='zh'?'Mint 价格必须大于 0。':'Mint price must be greater than 0.')); return; }
+  if(fill <= 0){ alert((currentLang==='zh'?'募资目标必须大于 0。':'Fundraise target must be greater than 0.')); return; }
+  if(fill < mint){ alert((currentLang==='zh'?'募资目标必须大于等于 Mint 价格。':'Fundraise target must be ≥ mint price.')); return; }
+  if(presalePct < 1 || presalePct > 99){ alert((currentLang==='zh'?'预售分配必须在 1% 到 99% 之间。':'Presale allocation must be between 1% and 99%.')); return; }
   var allocTotal = mktBps+burnBps+divBps+liqBps;
-  if(allocTotal !== 100){ alert('Tax allocation must sum to exactly 100%. Current: '+allocTotal+'%'); return; }
+  if(allocTotal !== 100){ alert((currentLang==='zh'?'税收分配之和必须为 100%。当前：':'Tax allocation must sum to exactly 100%. Current: ')+allocTotal+'%'); return; }
+  if(ownerInput && ownerInput.length !== 42){ alert((currentLang==='zh'?'管理员地址格式不正确。':'Owner address format is invalid.')); return; }
 
   var mintWei = ethers.utils.parseEther(mint.toString());
   var fillWei = ethers.utils.parseEther(fill.toString());
@@ -884,8 +1050,8 @@ async function deployToken(){
 
   openModal();
   document.getElementById('modal-icon').textContent = '🍞';
-  document.getElementById('modal-title').textContent = 'Baking Your Token...';
-  document.getElementById('modal-desc').textContent = 'Please sign the transaction in your wallet.';
+  document.getElementById('modal-title').textContent = I18N[currentLang]['modal.wait'];
+  document.getElementById('modal-desc').textContent = I18N[currentLang]['modal.sign'];
   setStep(3);
 
   try {
@@ -905,10 +1071,10 @@ async function deployToken(){
       ownerAddr
     ];
 
-    setModalStatus('Deploying contract...');
+    setModalStatus(I18N[currentLang]['modal.sign']);
     var contract = await factory.deploy(...args);
 
-    setModalStatus('Waiting for confirmation...');
+    setModalStatus((currentLang==='zh'?'等待确认...':'Waiting for confirmation...'));
     var receipt = await contract.deployTransaction.wait(1);
     deployedContract = contract.address;
 
@@ -939,8 +1105,8 @@ async function deployToken(){
 
     // Success state
     document.getElementById('modal-icon').textContent = '✅';
-    document.getElementById('modal-title').textContent = 'Token Deployed!';
-    document.getElementById('modal-desc').textContent = 'Your contract is live on BNB Chain. Mint is now open.';
+    document.getElementById('modal-title').textContent = I18N[currentLang]['modal.success'];
+    document.getElementById('modal-desc').textContent = I18N[currentLang]['modal.live'];
     document.getElementById('modal-status').style.display = 'none';
     var cbox = document.getElementById('contract-box');
     cbox.style.display = 'block';
@@ -955,8 +1121,8 @@ async function deployToken(){
 
   } catch(e){
     document.getElementById('modal-icon').textContent = '❌';
-    document.getElementById('modal-title').textContent = 'Deployment Failed';
-    document.getElementById('modal-desc').textContent = e.reason || e.message || 'Unknown error.';
+    document.getElementById('modal-title').textContent = I18N[currentLang]['modal.fail'];
+    document.getElementById('modal-desc').textContent = (e.reason||e.message||'Unknown error.');
     document.getElementById('modal-status').style.display = 'none';
     setStep(2);
   }
@@ -968,7 +1134,8 @@ function setModalStatus(msg){ document.getElementById('modal-status-text').textC
 function copyAddr(){
   navigator.clipboard.writeText(deployedContract).then(function(){
     var btn = document.getElementById('btn-copy');
-    btn.textContent = 'Copied!'; setTimeout(function(){ btn.textContent = 'Copy Address'; }, 2000);
+    btn.textContent = (currentLang==='zh'?'已复制!':'Copied!');
+    setTimeout(function(){ btn.textContent = (currentLang==='zh'?'复制地址':'Copy Address'); }, 2000);
   });
 }
 
@@ -983,7 +1150,7 @@ function downloadVerifyJson(){
 
 /* ─── ADMIN ─── */
 function openAdminPanelByAddress(){
-  var addr = prompt('Enter contract address to manage:');
+  var addr = prompt((currentLang==='zh'?'输入要管理的合约地址:':'Enter contract address to manage:'));
   if(addr) window.open('https://bscscan.com/address/'+addr+'#writeContract','_blank');
 }
 
@@ -993,6 +1160,7 @@ window.addEventListener('load', function(){
   updateAlloc();
   document.getElementById('buyTax').dispatchEvent(new Event('input'));
   document.getElementById('sellTax').dispatchEvent(new Event('input'));
+  applyLang();
 });
 </script>
 </body>
