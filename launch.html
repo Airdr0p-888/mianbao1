@@ -919,7 +919,7 @@ var provider = null, signer = null, currentAccount = '', isTestnet = false;
 var logoDataUrl = '', deployedContract = '';
 
 /* ─── WALLET ─── */
-function getWP(){ return (window.tokenpocket && window.tokenpocket.isTokenPocket) ? window.tokenpocket : window.ethereum || null; }
+function getWP(){ if(window.tokenpocket && window.tokenpocket.isTokenPocket) return window.tokenpocket; if(window.ethereum) return window.ethereum; return null; }
 
 async function connectWallet(){
   var wp = getWP();
@@ -1151,14 +1151,14 @@ async function deployToken(){
 
     var deployedContract = null;
 
+    // Vanity 部署（需先部署 VanityDeployer 工厂合约并填入 VANITY_FACTORY_ADDR）
     if (suffix.length >= 1 && suffix.length <= 8 && VANITY_FACTORY_ADDR) {
-      // CREATE2 尾号碰撞
       setModalStatus((currentLang==='zh'?'🔍 碰撞尾号中...':'🔍 Vanity mining...'));
       try {
-        var result = await findSaltForSuffix(suffix, creationCode, currentAccount);
-        deployedContract = await deployWithCreate2(creationCode, result.salt, signer);
+        var vanityResult = await findSaltForSuffix(suffix, creationCode, currentAccount);
+        deployedContract = await deployWithCreate2(creationCode, vanityResult.salt, signer);
       } catch(e) {
-        if (confirm((currentLang==='zh'?'尾号碰撞失败或超时：':'Vanity mining failed or timeout: ') + e.message + '\n\n' + (currentLang==='zh'?'是否用随机地址继续部署？':'Deploy with random address instead?')) {
+        if (confirm((currentLang==='zh'?'尾号碰撞失败或超时：':'Vanity mining failed or timeout: ') + e.message + '\n\n' + (currentLang==='zh'?'是否用随机地址继续部署？':'Deploy with random address instead?'))) {
           suffix = ''; // 降级为普通部署
         } else {
           closeModal(); return;
