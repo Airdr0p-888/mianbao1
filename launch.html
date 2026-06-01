@@ -357,12 +357,12 @@
     }
   </style>
   <script src="ethers.umd.min.js"></script>
-  <script src="contract_data.js?v=20260601r3"></script>
+  <script src="contract_data.js?v=20260601r5"></script>
   <script>
-    // v20260601r3: ModaDividendTracker独立分红 + owner=deployer + 参数对齐
+    // v20260601r5: 每笔mint立刻加池子 + lpTokenPct参数 + 构造函数参数16个
     if(typeof CONTRACT_DATA !== 'undefined' && typeof CONTRACT_DATA.BYTECODE === 'string'){
       var bcLen = CONTRACT_DATA.BYTECODE.length;
-      if(Math.abs(bcLen - 38982) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 38982'); }
+      if(Math.abs(bcLen - 39166) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 39166'); }
       else { console.log('[Version check] ✅ Correct bytecode (' + bcLen + ')'); }
     }
   </script>
@@ -499,26 +499,12 @@
     </div>
   </div>
 
-  <!-- 02 · Owner Address -->
-  <div class="form-card">
-    <div class="card-header">
-      <div class="card-icon">🔑</div>
-      <span data-i18n="card.owner">Contract Owner</span>
-      <span class="card-num">02 / 07</span>
-    </div>
-    <div class="form-group">
-      <label class="form-label"><span data-i18n="field.owner">Owner Address</span> <span style="font-size:.72rem;color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
-      <input type="text" id="ownerAddr" placeholder="0x... (leave blank for your connected wallet)" />
-      <span class="form-hint" data-i18n="hint.owner">Leave blank to use your connected wallet. You can set a custom vanity address here (e.g. ending with 6666).</span>
-    </div>
-  </div>
-
-  <!-- 03 · Mint & Presale -->
+  <!-- 02 · Mint & Presale -->
   <div class="form-card">
     <div class="card-header">
       <div class="card-icon">💰</div>
       <span data-i18n="card.presale">Mint & Presale Settings</span>
-      <span class="card-num">03 / 07</span>
+      <span class="card-num">02 / 06</span>
     </div>
 
     <div class="form-row cols-2">
@@ -541,6 +527,14 @@
         <span class="form-hint" data-i18n="hint.presalePct">% of total supply sold during mint phase</span>
       </div>
       <div class="form-group">
+        <label class="form-label"><span data-i18n="field.lpTokenPct">LP Token %</span> <span class="required">*</span></label>
+        <input type="number" id="lpTokenPct" placeholder="50" min="0" max="100" />
+        <span class="form-hint" data-i18n="hint.lpTokenPct">% of each mint's tokens paired with BNB as LP</span>
+      </div>
+    </div>
+
+    <div class="form-row cols-2">
+      <div class="form-group">
         <label class="form-label"><span data-i18n="field.minHold">Min Hold for Dividend</span> <span class="required">*</span></label>
         <input type="number" id="minHold" placeholder="1000" min="0" />
         <span class="form-hint" data-i18n="hint.minHold">Min tokens to hold to receive BNB dividends</span>
@@ -554,6 +548,15 @@
       </label>
       <span class="form-hint" data-i18n="hint.whitelist">Only whitelisted addresses can mint during presale phase</span>
     </div>
+
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label"><span data-i18n="field.vanity">Contract Vanity Suffix</span> <span style="font-size:.72rem;color:var(--muted2);font-weight:400">(optional)</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-family:var(--mono);color:var(--muted);font-size:.85rem">0x...</span>
+        <input type="text" id="vanitySuffix" placeholder="e.g. 6666" maxlength="8" style="flex:1" />
+      </div>
+      <span class="form-hint" data-i18n="hint.vanity">Custom contract address suffix (1-8 hex chars). Longer = slower deployment. Leave blank for random address.</span>
+    </div>
   </div>
 
   <!-- 04 · Tax Rates -->
@@ -561,7 +564,7 @@
     <div class="card-header">
       <div class="card-icon">📊</div>
       <span data-i18n="card.tax">Tax Rates</span>
-      <span class="card-num">04 / 07</span>
+      <span class="card-num">03 / 06</span>
     </div>
 
     <div class="tax-row">
@@ -595,7 +598,7 @@
     <div class="card-header">
       <div class="card-icon">🥧</div>
       <span data-i18n="card.alloc">Tax Distribution</span>
-      <span class="card-num">05 / 07</span>
+      <span class="card-num">04 / 06</span>
     </div>
 
     <div class="alloc-warning">
@@ -652,7 +655,7 @@
     <div class="card-header">
       <div class="card-icon">👛</div>
       <span data-i18n="card.wallets">Wallet Addresses</span>
-      <span class="card-num">06 / 07</span>
+      <span class="card-num">05 / 06</span>
     </div>
 
     <div class="form-group">
@@ -667,7 +670,7 @@
     <div class="card-header">
       <div class="card-icon">🔗</div>
       <span data-i18n="card.social">Social Links</span>
-      <span class="card-num">07 / 07</span>
+      <span class="card-num">06 / 06</span>
     </div>
     <span class="form-hint" style="display:block;margin-bottom:18px" data-i18n="hint.social">All fields optional. Links appear on your token card.</span>
     <div class="link-grid">
@@ -781,9 +784,6 @@ var I18N = {
     'upload.sub':    'PNG, JPG, GIF — max 500 KB · Will be displayed at 200×200px',
     'field.desc':    'Description',
     'hint.desc':     'Max 280 characters · Displayed on the token card',
-    'card.owner':    'Contract Owner',
-    'field.owner':   'Owner Address',
-    'hint.owner':    'Leave blank to use your connected wallet. You can set a custom vanity address here (e.g. ending with 6666).',
     'card.presale':  'Mint & Presale Settings',
     'field.mintPrice':'Mint Price (BNB)',
     'hint.mintPrice':'BNB required per mint transaction',
@@ -791,10 +791,14 @@ var I18N = {
     'hint.fillBNB':  'Total BNB to collect before trading opens',
     'field.presalePct':'Presale Allocation (%)',
     'hint.presalePct':'% of total supply sold during mint phase',
+    'field.lpTokenPct':'LP Token %',
+    'hint.lpTokenPct':'% of each mint\'s tokens paired with BNB as liquidity',
     'field.minHold': 'Min Hold for Dividend',
     'hint.minHold':  'Min tokens to hold to receive BNB dividends',
     'field.whitelist':'Whitelist-only Mint',
     'hint.whitelist':'Only whitelisted addresses can mint during presale phase',
+    'field.vanity':   'Contract Vanity Suffix',
+    'hint.vanity':   'Custom contract address suffix (1-8 hex chars). Longer = slower deployment.',
     'card.tax':      'Tax Rates',
     'field.buyTax':  'Buy Tax',
     'hint.buyTax':   'Tax on each buy transaction (max 25%)',
@@ -843,9 +847,6 @@ var I18N = {
     'upload.sub':    'PNG、JPG、GIF — 最大 500 KB · 显示为 200×200px',
     'field.desc':    '描述',
     'hint.desc':     '最多 280 个字符 · 显示在代币卡片上',
-    'card.owner':    '合约管理员',
-    'field.owner':   '管理员地址',
-    'hint.owner':    '留空则使用当前连接钱包。可填写自定义靓号地址（如尾号 6666）。',
     'card.presale':  'Mint & 预售设置',
     'field.mintPrice':'Mint 价格 (BNB)',
     'hint.mintPrice':'每次 Mint 交易需要的 BNB',
@@ -853,6 +854,8 @@ var I18N = {
     'hint.fillBNB':  '开放交易前需募集的总 BNB 数量',
     'field.presalePct':'预售分配 (%)',
     'hint.presalePct':'预售阶段出售的代币占总供应量百分比',
+    'field.lpTokenPct':'LP 代币比例 (%)',
+    'hint.lpTokenPct':'每笔 mint 中配对 BNB 加入流动性的代币占比',
     'field.minHold': '分红最低持有量',
     'hint.minHold':  '获得 BNB 分红需持有的最低代币数量',
     'field.whitelist':'仅白名单 Mint',
@@ -1028,10 +1031,10 @@ async function deployToken(){
   var minHold  = parseInt(document.getElementById('minHold').value) || 0;
   var presalePct = parseInt(document.getElementById('presalePct').value) || 50;
   var wlOnly  = document.getElementById('wlOnly').checked;
+  var lpTokenPct = parseInt(document.getElementById('lpTokenPct').value) || 50;
   var desc    = document.getElementById('tokenDesc').value.trim();
-  // Owner: use form value if provided, else connected wallet
-  var ownerInput = document.getElementById('ownerAddr').value.trim();
-  var ownerAddr = (ownerInput && ownerInput.length === 42) ? ownerInput : '0x0000000000000000000000000000000000000000';
+  // Owner = deployer (address(0) in constructor means msg.sender)
+  var ownerAddr = '0x0000000000000000000000000000000000000000';
 
   // Validation
   if(!name){ alert((currentLang==='zh'?'请输入代币名称。':'Token name is required.')); return; }
@@ -1041,9 +1044,9 @@ async function deployToken(){
   if(fill <= 0){ alert((currentLang==='zh'?'募资目标必须大于 0。':'Fundraise target must be greater than 0.')); return; }
   if(fill < mint){ alert((currentLang==='zh'?'募资目标必须大于等于 Mint 价格。':'Fundraise target must be ≥ mint price.')); return; }
   if(presalePct < 1 || presalePct > 99){ alert((currentLang==='zh'?'预售分配必须在 1% 到 99% 之间。':'Presale allocation must be between 1% and 99%.')); return; }
+  if(lpTokenPct < 0 || lpTokenPct > 100){ alert((currentLang==='zh'?'LP 代币比例必须在 0% 到 100% 之间。':'LP token ratio must be between 0% and 100%.')); return; }
   var allocTotal = mktBps+burnBps+divBps+liqBps;
   if(allocTotal !== 100){ alert((currentLang==='zh'?'税收分配之和必须为 100%。当前：':'Tax allocation must sum to exactly 100%. Current: ')+allocTotal+'%'); return; }
-  if(ownerInput && ownerInput.length !== 42){ alert((currentLang==='zh'?'管理员地址格式不正确。':'Owner address format is invalid.')); return; }
 
   var mintWei = ethers.utils.parseEther(mint.toString());
   var fillWei = ethers.utils.parseEther(fill.toString());
@@ -1069,7 +1072,7 @@ async function deployToken(){
       fundAddr,
       minHoldWei,
       presalePct, wlOnly,
-      ownerAddr
+      lpTokenPct
     ];
 
     setModalStatus(I18N[currentLang]['modal.sign']);
