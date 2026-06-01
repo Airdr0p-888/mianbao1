@@ -357,14 +357,16 @@
     }
   </style>
   <script src="ethers.umd.min.js"></script>
-  <script src="contract_data.js?v=20260601r1"></script>
+  <script src="contract_data.js?v=20260601r3"></script>
   <script>
+    // v20260601r3: ModaDividendTracker独立分红 + owner=deployer + 参数对齐
     if(typeof CONTRACT_DATA !== 'undefined' && typeof CONTRACT_DATA.BYTECODE === 'string'){
       var bcLen = CONTRACT_DATA.BYTECODE.length;
-      if(Math.abs(bcLen - 27554) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen); }
+      if(Math.abs(bcLen - 38982) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 38982'); }
+      else { console.log('[Version check] ✅ Correct bytecode (' + bcLen + ')'); }
     }
   </script>
-  <script src="factory_data.js?v=20260601r1"></script>
+  <script src="factory_data.js?v=20260601r3"></script>
 </head>
 <body>
 
@@ -1023,7 +1025,6 @@ async function deployToken(){
   var divBps  = parseInt(document.getElementById('a-div').value) || 0;
   var liqBps  = parseInt(document.getElementById('a-liq').value) || 0;
   var fundAddr = document.getElementById('marketingWallet').value.trim() || currentAccount;
-  var divToken = '0x0000000000000000000000000000000000000000';
   var minHold  = parseInt(document.getElementById('minHold').value) || 0;
   var presalePct = parseInt(document.getElementById('presalePct').value) || 50;
   var wlOnly  = document.getElementById('wlOnly').checked;
@@ -1065,7 +1066,7 @@ async function deployToken(){
       mintWei, fillWei,
       Math.round(buyT * 100), Math.round(sellT * 100),
       mktBps * 100, burnBps * 100, divBps * 100, liqBps * 100,
-      fundAddr, divToken,
+      fundAddr,
       minHoldWei,
       presalePct, wlOnly,
       ownerAddr
