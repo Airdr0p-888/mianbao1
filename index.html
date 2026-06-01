@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BREAD LAUNCH — Token Launch Platform on BNB Chain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0a0a0a;
+      --bg2:       #111111;
+      --bg3:       #1a1a1a;
+      --bg4:       #222222;
+      --border:    rgba(255,255,255,.08);
+      --border2:   rgba(255,255,255,.15);
+      --gold:      #f5c842;
+      --gold2:     #e8a020;
+      --amber:     #ff8c00;
+      --cream:     #fef3c7;
+      --text:      #f0ede8;
+      --muted:     #888;
+      --muted2:    #666;
+      --radius:    12px;
+      --font:      'Space Grotesk', system-ui, sans-serif;
+      --mono:      'Space Mono', monospace;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── GRAIN TEXTURE OVERLAY ── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: .4;
+    }
+
+    /* ── ANIMATED BG GLOW ── */
+    .bg-glow {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .bg-glow::before {
+      content: '';
+      position: absolute;
+      width: 800px; height: 800px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(245,200,66,.06) 0%, transparent 70%);
+      top: -200px; left: -200px;
+      animation: drift1 18s ease-in-out infinite;
+    }
+    .bg-glow::after {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,160,32,.05) 0%, transparent 70%);
+      bottom: -100px; right: -100px;
+      animation: drift2 22s ease-in-out infinite;
+    }
+    @keyframes drift1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(120px, 80px) scale(1.1); }
+      66% { transform: translate(-60px, 140px) scale(.9); }
+    }
+    @keyframes drift2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-100px, -80px) scale(1.15); }
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 32px; position: relative; z-index: 1; }
+    .container-sm { max-width: 900px; margin: 0 auto; padding: 0 32px; position: relative; z-index: 1; }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(10,10,10,.85);
+      backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+    }
+    nav {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      border-radius: 10px;
+      font-size: 1.5rem;
+      animation: bob 4s ease-in-out infinite;
+      box-shadow: 0 0 20px rgba(245,200,66,.3);
+    }
+    @keyframes bob {
+      0%, 100% { transform: translateY(0) rotate(-2deg); }
+      50% { transform: translateY(-5px) rotate(2deg); }
+    }
+    .logo-name {
+      display: flex; flex-direction: column; line-height: 1.1;
+    }
+    .logo-name strong {
+      font-size: 1.2rem; font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--gold);
+    }
+    .logo-name span {
+      font-size: .65rem; letter-spacing: 3px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .nav-links { display: flex; align-items: center; gap: 10px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 20px; border-radius: 8px;
+      font-family: var(--font); font-weight: 600; font-size: .875rem;
+      cursor: pointer; text-decoration: none; border: none;
+      transition: all .2s; letter-spacing: .3px;
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      color: #0a0a0a;
+      box-shadow: 0 0 20px rgba(245,200,66,.2);
+    }
+    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 4px 28px rgba(245,200,66,.4); }
+    .btn-outline {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn-outline:hover { border-color: var(--gold); color: var(--gold); background: rgba(245,200,66,.05); }
+    .lang-toggle {
+      border: 1px solid rgba(245,200,66,.35) !important;
+      color: var(--gold) !important;
+      font-family: var(--font) !important;
+      font-size: .78rem !important;
+      letter-spacing: 1px !important;
+      padding: 6px 14px !important;
+      border-radius: 6px !important;
+    }
+    .lang-toggle:hover { background: rgba(245,200,66,.08) !important; }
+
+    .btn-ghost {
+      background: transparent; color: var(--muted);
+      border: none; padding: 9px 14px;
+    }
+    .btn-ghost:hover { color: var(--text); }
+    .btn-lg { padding: 14px 32px; font-size: 1rem; border-radius: 10px; }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 120px 0 100px;
+      position: relative; overflow: hidden;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: center;
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid rgba(245,200,66,.3);
+      background: rgba(245,200,66,.05);
+      padding: 6px 16px; border-radius: 50px;
+      font-size: .78rem; letter-spacing: 2px;
+      color: var(--gold); text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .hero-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: blink 1.5s ease infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+    .hero h1 {
+      font-size: clamp(2.4rem, 4.5vw, 4.2rem);
+      font-weight: 700; line-height: 1.1;
+      letter-spacing: -1.5px;
+      margin-bottom: 24px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--gold);
+      display: block;
+    }
+    .hero-desc {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.8;
+      margin-bottom: 40px;
+      max-width: 480px;
+    }
+    .hero-btns { display: flex; gap: 14px; flex-wrap: wrap; }
+    .hero-visual {
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .bread-ring {
+      width: 340px; height: 340px;
+      border-radius: 50%;
+      border: 1px solid rgba(245,200,66,.12);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      animation: rotate-ring 30s linear infinite;
+    }
+    @keyframes rotate-ring { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .bread-ring::before {
+      content: '';
+      position: absolute; inset: 20px;
+      border-radius: 50%;
+      border: 1px dashed rgba(245,200,66,.08);
+    }
+    .bread-center {
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, #2a2010, #1a1008);
+      border: 2px solid rgba(245,200,66,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5rem;
+      box-shadow: 0 0 60px rgba(245,200,66,.15), inset 0 0 40px rgba(245,200,66,.05);
+      animation: counter-rotate 30s linear infinite;
+    }
+    @keyframes counter-rotate { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+    .orbit-dot {
+      position: absolute;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 12px var(--gold);
+    }
+    .orbit-dot:nth-child(1) { top: 10px; left: 50%; transform: translateX(-50%); }
+    .orbit-dot:nth-child(2) { bottom: 10px; left: 50%; transform: translateX(-50%); background: var(--amber); box-shadow: 0 0 12px var(--amber); }
+    .orbit-dot:nth-child(3) { left: 10px; top: 50%; transform: translateY(-50%); background: #fff; opacity: .4; box-shadow: none; }
+    .orbit-dot:nth-child(4) { right: 10px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; background: var(--gold); opacity: .6; }
+    .hero-stats-row {
+      display: flex; gap: 40px;
+      margin-top: 48px; padding-top: 48px;
+      border-top: 1px solid var(--border);
+    }
+    .hero-stat { display: flex; flex-direction: column; }
+    .hero-stat-val {
+      font-size: 1.8rem; font-weight: 700; color: var(--gold);
+      font-variant-numeric: tabular-nums;
+    }
+    .hero-stat-label { font-size: .78rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+    /* ── TICKER STRIP ── */
+    .ticker-strip {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      padding: 12px 0;
+      overflow: hidden;
+    }
+    .ticker-inner {
+      display: flex; gap: 48px;
+      white-space: nowrap;
+      animation: ticker-scroll 24s linear infinite;
+      width: max-content;
+    }
+    @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .ticker-item {
+      display: flex; align-items: center; gap: 10px;
+      font-size: .82rem; color: var(--muted);
+      letter-spacing: 1px;
+    }
+    .ticker-item .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+
+    /* ── SECTION HEADERS ── */
+    .section-label {
+      display: flex; align-items: center; gap: 12px;
+      font-size: .72rem; letter-spacing: 3px; color: var(--gold);
+      text-transform: uppercase; margin-bottom: 16px;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, rgba(245,200,66,.3), transparent);
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+      font-weight: 700; letter-spacing: -1px;
+      margin-bottom: 14px;
+    }
+    .section-desc { color: var(--muted); font-size: .95rem; max-width: 560px; }
+
+    /* ── STATS BAND ── */
+    .stats-band {
+      padding: 60px 0;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px; background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .stat-cell {
+      background: var(--bg2);
+      padding: 36px 28px;
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 2.6rem; font-weight: 700;
+      color: var(--gold); line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-lbl { font-size: .78rem; color: var(--muted); margin-top: 8px; letter-spacing: 1px; text-transform: uppercase; }
+
+    /* ── TOKEN GRID SECTION ── */
+    .tokens-section { padding: 100px 0; }
+    .tokens-header {
+      display: flex; align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 48px;
+    }
+    .tokens-header-left { flex: 1; }
+    .tab-bar {
+      display: flex; gap: 4px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 4px;
+    }
+    .tab-btn {
+      padding: 8px 20px; border-radius: 7px;
+      border: none; background: transparent;
+      color: var(--muted); font-family: var(--font);
+      font-size: .85rem; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+    }
+    .tab-btn.active {
+      background: var(--gold); color: #0a0a0a;
+      box-shadow: 0 2px 8px rgba(245,200,66,.3);
+    }
+
+    /* Token Table */
+    .token-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--bg2);
+    }
+    .token-table-head {
+      display: grid;
+      grid-template-columns: 48px 1fr 120px 140px 180px 100px;
+      padding: 14px 20px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      font-size: .72rem; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--muted2);
+    }
+    .token-row {
+      display: grid;
+      grid-template-columns: 48px 1fr 120px 140px 180px 100px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .token-row:last-child { border-bottom: none; }
+    .token-row:hover { background: rgba(245,200,66,.03); }
+    .row-num { font-size: .82rem; color: var(--muted2); font-family: var(--mono); }
+    .row-token { display: flex; align-items: center; gap: 14px; }
+    .row-avatar {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700;
+      flex-shrink: 0; overflow: hidden;
+    }
+    .row-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .row-name { font-weight: 600; font-size: .95rem; }
+    .row-symbol { font-size: .78rem; color: var(--muted); font-family: var(--mono); }
+    .row-status { display: flex; justify-content: flex-start; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 50px;
+      font-size: .72rem; font-weight: 700; letter-spacing: .5px;
+    }
+    .pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+    .pill-live { background: rgba(245,200,66,.1); color: var(--gold); border: 1px solid rgba(245,200,66,.2); }
+    .pill-live::before { background: var(--gold); animation: blink 1.5s infinite; }
+    .pill-done { background: rgba(16,185,129,.08); color: #34d399; border: 1px solid rgba(16,185,129,.2); }
+    .pill-done::before { background: #34d399; }
+    .row-progress { display: flex; flex-direction: column; gap: 5px; }
+    .progress-bar {
+      height: 5px; border-radius: 50px;
+      background: rgba(255,255,255,.06); overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 50px;
+      transition: width .6s ease;
+    }
+    .fill-live { background: linear-gradient(90deg, var(--gold), var(--amber)); }
+    .fill-done { background: linear-gradient(90deg, #10b981, #34d399); }
+    .progress-info { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); font-family: var(--mono); }
+    .row-tax { font-size: .82rem; font-family: var(--mono); color: var(--muted); }
+    .row-action .btn { padding: 7px 16px; font-size: .78rem; }
+    .del-btn {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 1px solid rgba(239,68,68,.25);
+      background: rgba(239,68,68,.06);
+      color: #f87171; font-size: .65rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all .15s; flex-shrink: 0;
+    }
+    .del-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .table-empty {
+      text-align: center; padding: 60px 20px;
+      color: var(--muted); font-size: .9rem;
+    }
+
+    /* ── FEATURES SECTION ── */
+    .features-section { padding: 100px 0; background: var(--bg2); }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px; background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      margin-top: 60px;
+    }
+    .feature-cell {
+      background: var(--bg2);
+      padding: 40px 32px;
+      position: relative;
+      transition: background .2s;
+    }
+    .feature-cell:hover { background: var(--bg3); }
+    .feature-cell::after {
+      content: attr(data-num);
+      position: absolute; top: 28px; right: 28px;
+      font-family: var(--mono); font-size: .72rem;
+      color: var(--muted2);
+    }
+    .feat-icon {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      border: 1px solid rgba(245,200,66,.2);
+      background: rgba(245,200,66,.05);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 20px;
+      transition: box-shadow .2s;
+    }
+    .feature-cell:hover .feat-icon { box-shadow: 0 0 20px rgba(245,200,66,.2); }
+    .feat-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; letter-spacing: -.3px; }
+    .feat-desc { font-size: .875rem; color: var(--muted); line-height: 1.75; }
+    .feat-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 16px; font-size: .8rem; color: var(--gold);
+      text-decoration: none; font-weight: 600;
+      opacity: 0; transition: opacity .2s;
+    }
+    .feature-cell:hover .feat-link { opacity: 1; }
+    .feature-cell.clickable { cursor: pointer; }
+
+    /* ── HOW IT WORKS ── */
+    .how-section { padding: 100px 0; }
+    .steps-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      margin-top: 60px;
+      position: relative;
+    }
+    .steps-row::before {
+      content: '';
+      position: absolute;
+      top: 28px; left: 12.5%; right: 12.5%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), var(--amber), var(--gold), transparent);
+      opacity: .3;
+    }
+    .step {
+      text-align: center; padding: 0 20px;
+      position: relative;
+    }
+    .step-num {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      border: 1px solid rgba(245,200,66,.3);
+      background: var(--bg2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 700; font-family: var(--mono);
+      color: var(--gold); margin: 0 auto 20px;
+      box-shadow: 0 0 20px rgba(245,200,66,.1);
+      position: relative; z-index: 1;
+    }
+    .step-title { font-weight: 700; font-size: .95rem; margin-bottom: 10px; }
+    .step-desc { font-size: .82rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── CTA BAND ── */
+    .cta-band {
+      padding: 100px 0;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .cta-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid rgba(245,200,66,.2);
+      background: rgba(245,200,66,.04);
+      padding: 6px 18px; border-radius: 50px;
+      font-size: .72rem; letter-spacing: 2.5px;
+      color: var(--muted); text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .cta-band h2 {
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 700; letter-spacing: -1.5px;
+      margin-bottom: 20px;
+    }
+    .cta-band h2 span { color: var(--gold); }
+    .cta-band p { color: var(--muted); max-width: 480px; margin: 0 auto 40px; font-size: 1rem; line-height: 1.8; }
+    .cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .cta-note { margin-top: 24px; font-size: .78rem; color: var(--muted2); }
+
+    /* ── ABOUT SECTION ── */
+    .about-section { padding: 100px 0; }
+    .about-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 80px; align-items: center;
+    }
+    .about-left .section-label { margin-bottom: 20px; }
+    .about-right {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .about-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      display: flex; gap: 16px; align-items: flex-start;
+      transition: border-color .2s;
+    }
+    .about-card:hover { border-color: rgba(245,200,66,.25); }
+    .about-card-icon {
+      width: 40px; height: 40px; border-radius: 8px;
+      background: rgba(245,200,66,.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .about-card-text h4 { font-weight: 700; margin-bottom: 4px; font-size: .95rem; }
+    .about-card-text p { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+    .social-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 28px; }
+    .social-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 18px; border-radius: 8px;
+      border: 1px solid var(--border2);
+      background: transparent; color: var(--muted);
+      text-decoration: none; font-size: .82rem; font-weight: 600;
+      transition: all .2s;
+    }
+    .social-btn:hover { border-color: var(--gold); color: var(--gold); background: rgba(245,200,66,.05); }
+
+    /* ── REFUND MODAL ── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.75); z-index: 1000;
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 18px;
+      padding: 40px 36px;
+      width: 460px; max-width: 94vw;
+      position: relative;
+      box-shadow: 0 24px 80px rgba(0,0,0,.6);
+    }
+    .modal-x {
+      position: absolute; top: 16px; right: 20px;
+      background: none; border: none; color: var(--muted);
+      font-size: 1.4rem; cursor: pointer; line-height: 1;
+    }
+    .modal-x:hover { color: var(--text); }
+    .modal h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -.5px; }
+    .modal-sub { font-size: .85rem; color: var(--muted); margin-bottom: 28px; }
+    .modal label { display: block; font-size: .8rem; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 7px; color: var(--muted); }
+    .modal input {
+      width: 100%; padding: 12px 16px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; font-size: .9rem;
+      font-family: var(--font); color: var(--text);
+      margin-bottom: 20px; transition: border-color .2s;
+    }
+    .modal input:focus { outline: none; border-color: rgba(245,200,66,.5); }
+    .modal input::placeholder { color: var(--muted2); }
+    .modal .btn { width: 100%; justify-content: center; font-size: .95rem; padding: 14px; }
+    .modal-ok { display: none; text-align: center; padding: 24px 0; }
+    .modal-ok .check-icon { font-size: 3rem; margin-bottom: 12px; }
+    .modal-ok p { color: var(--muted); font-size: .9rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+    .footer-inner {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-brand {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+    }
+    .footer-brand-icon {
+      width: 32px; height: 32px; border-radius: 7px;
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .footer-brand-name { font-size: .9rem; font-weight: 700; color: var(--gold); letter-spacing: 1px; }
+    .footer-copy { font-size: .78rem; color: var(--muted2); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a { font-size: .78rem; color: var(--muted2); text-decoration: none; }
+    .footer-links a:hover { color: var(--gold); }
+
+    /* ── SCROLL FADE IN ── */
+    .fade-in { opacity: 0; transform: translateY(28px); transition: opacity .6s ease, transform .6s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── MOBILE ── */
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .hero-visual { display: none; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps-row { grid-template-columns: repeat(2, 1fr); }
+      .steps-row::before { display: none; }
+      .about-grid { grid-template-columns: 1fr; }
+      .token-table-head, .token-row { grid-template-columns: 40px 1fr 100px 140px 80px; }
+      .token-table-head > :last-child, .token-row > :last-child { display: none; }
+    }
+    @media (max-width: 640px) {
+      .container, .container-sm { padding: 0 20px; }
+      nav { height: 60px; }
+      .hero { padding: 80px 0 60px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .steps-row { grid-template-columns: 1fr 1fr; }
+      .token-table-head { display: none; }
+      .token-row { grid-template-columns: 1fr 100px 80px; }
+      .token-row .row-num, .token-row .row-progress { display: none; }
+      .footer-inner { flex-direction: column; text-align: center; }
+    }
+    .wallet-chip {
+      font-size: .8rem; color: var(--gold);
+      background: rgba(245,200,66,.08); border: 1px solid rgba(245,200,66,.2);
+      padding: 5px 14px; border-radius: 50px; font-family: var(--mono);
+      display: none;
+    }
+  </style>
+  <script src="ethers.umd.min.js"></script>
+  <script src="contract_data.js?v=20260526r2"></script>
+  <script src="factory_data.js?v=20260526r2"></script>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <nav class="container">
+    <a class="logo" href="#">
+      <div class="logo-icon">🍞</div>
+      <div class="logo-name">
+        <strong>BREAD LAUNCH</strong>
+        <span>BNB Token Platform</span>
+      </div>
+    </a>
+    <div class="nav-links">
+      <span class="wallet-chip" id="wallet-chip"></span>
+      <button class="btn btn-outline" id="btn-wallet" onclick="connectWallet()">Connect Wallet</button>
+      <button class="btn btn-ghost lang-toggle" id="lang-btn" onclick="toggleLang()" title="切换语言 / Switch Language">中文</button>
+      <a href="#about" class="btn btn-ghost" data-i18n="nav.about">About</a>
+      <a href="launch.html" class="btn btn-gold" data-i18n="nav.launch">Launch Token →</a>
+    </div>
+  </nav>
+</header>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-left">
+        <div class="hero-tag" data-i18n="hero.tag">🍞 Fresh from the Oven · BNB Chain</div>
+        <h1 data-i18n="hero.h1">
+          Launch Your Token<br />
+          <em data-i18n="hero.h1em">No Code Required</em>
+        </h1>
+        <p class="hero-desc" data-i18n="hero.desc">
+          BREAD LAUNCH is the premier fair-mint token factory on BNB Chain.
+          Deploy audit-ready contracts in minutes. Built-in dividend system,
+          auto-liquidity, and anti-bot protection baked right in.
+        </p>
+        <div class="hero-btns">
+          <a href="launch.html" class="btn btn-gold btn-lg" data-i18n="hero.btn1">🚀 Launch Now</a>
+          <a href="#tokens" class="btn btn-outline btn-lg" data-i18n="hero.btn2">Browse Tokens</a>
+        </div>
+        <div class="hero-stats-row">
+          <div class="hero-stat">
+            <span class="hero-stat-val" id="h-tokens">0</span>
+            <span class="hero-stat-label" data-i18n="stat.launched">Tokens Launched</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-val" id="h-raised">0</span>
+            <span class="hero-stat-label" data-i18n="stat.raised">BNB Raised</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-val" id="h-done">0</span>
+            <span class="hero-stat-label" data-i18n="stat.completed">Completed</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="bread-ring">
+          <div class="orbit-dot"></div>
+          <div class="orbit-dot"></div>
+          <div class="orbit-dot"></div>
+          <div class="orbit-dot"></div>
+          <div class="bread-center">🍞</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TICKER ═══ -->
+<div class="ticker-strip">
+  <div class="ticker-inner" id="ticker">
+    <span class="ticker-item"><span class="dot"></span> FAIR MINT PLATFORM</span>
+    <span class="ticker-item"><span class="dot"></span> BUILT ON BNB CHAIN</span>
+    <span class="ticker-item"><span class="dot"></span> AUTO DIVIDEND SYSTEM</span>
+    <span class="ticker-item"><span class="dot"></span> ANTI-BOT PROTECTION</span>
+    <span class="ticker-item"><span class="dot"></span> ZERO CODE DEPLOY</span>
+    <span class="ticker-item"><span class="dot"></span> AUDIT-READY CONTRACTS</span>
+    <span class="ticker-item"><span class="dot"></span> PANDA REWARDS BAKED IN</span>
+    <span class="ticker-item"><span class="dot"></span> AUTO LIQUIDITY LOCK</span>
+    <!-- duplicate for seamless loop -->
+    <span class="ticker-item"><span class="dot"></span> FAIR MINT PLATFORM</span>
+    <span class="ticker-item"><span class="dot"></span> BUILT ON BNB CHAIN</span>
+    <span class="ticker-item"><span class="dot"></span> AUTO DIVIDEND SYSTEM</span>
+    <span class="ticker-item"><span class="dot"></span> ANTI-BOT PROTECTION</span>
+    <span class="ticker-item"><span class="dot"></span> ZERO CODE DEPLOY</span>
+    <span class="ticker-item"><span class="dot"></span> AUDIT-READY CONTRACTS</span>
+    <span class="ticker-item"><span class="dot"></span> PANDA REWARDS BAKED IN</span>
+    <span class="ticker-item"><span class="dot"></span> AUTO LIQUIDITY LOCK</span>
+  </div>
+</div>
+
+<!-- ═══ STATS BAND ═══ -->
+<section class="stats-band">
+  <div class="container">
+    <div class="stats-row">
+      <div class="stat-cell fade-in">
+        <div class="stat-val" id="s-tokens">—</div>
+        <div class="stat-lbl" data-i18n="stat.launched">Tokens Launched</div>
+      </div>
+      <div class="stat-cell fade-in">
+        <div class="stat-val" id="s-raised">—</div>
+        <div class="stat-lbl" data-i18n="stat.totalRaised">Total BNB Raised</div>
+      </div>
+      <div class="stat-cell fade-in">
+        <div class="stat-val" id="s-live">—</div>
+        <div class="stat-lbl" data-i18n="stat.activeMints">Active Mints</div>
+      </div>
+      <div class="stat-cell fade-in">
+        <div class="stat-val" id="s-done">—</div>
+        <div class="stat-lbl" data-i18n="stat.completedLaunches">Completed Launches</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TOKEN TABLE ═══ -->
+<section class="tokens-section" id="tokens">
+  <div class="container">
+    <div class="tokens-header">
+      <div class="tokens-header-left">
+        <div class="section-label" data-i18n="tokens.label">Token Marketplace</div>
+        <h2 class="section-title" data-i18n="tokens.title">All Launches</h2>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="tab-bar">
+          <button class="tab-btn active" id="tab-all" onclick="setTab('all',this)">All</button>
+          <button class="tab-btn" id="tab-live" onclick="setTab('live',this)">Live 🟡</button>
+          <button class="tab-btn" id="tab-done" onclick="setTab('done',this)">Done ✅</button>
+        </div>
+        <button class="btn btn-outline" onclick="loadTokens()" style="padding:8px 16px;font-size:.82rem">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="token-table-wrap">
+      <div class="token-table-head">
+        <div>#</div>
+        <div>Token</div>
+        <div>Status</div>
+        <div>Progress</div>
+        <div>Mint Progress</div>
+        <div>Tax B/S</div>
+      </div>
+      <div id="token-list">
+        <div class="table-empty">⏳ Loading tokens from chain...</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section class="features-section" id="features">
+  <div class="container">
+    <div class="section-label fade-in" data-i18n="feat.label">Why BREAD LAUNCH</div>
+    <h2 class="section-title fade-in" data-i18n="feat.title">Everything Baked In</h2>
+    <p class="section-desc fade-in" data-i18n="feat.desc">Six core capabilities, zero compromises. Launch your meme token with the same infrastructure used by professional teams.</p>
+    <div class="features-grid">
+      <div class="feature-cell fade-in" data-num="01">
+        <div class="feat-icon">🔒</div>
+        <div class="feat-title" data-i18n="feat1.title">Audited Contracts</div>
+        <div class="feat-desc" data-i18n="feat1.desc">Every contract template is carefully reviewed for common exploits. No backdoors, no owner drain functions, no honeypot traps.</div>
+        <a class="feat-link" href="#" data-i18n="feat1.link">View Template →</a>
+      </div>
+      <div class="feature-cell fade-in" data-num="02">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-title" data-i18n="feat2.title">One-Click Deploy</div>
+        <div class="feat-desc" data-i18n="feat2.desc">Fill in your token parameters and hit deploy. Your ERC-20 compliant contract is live on BNB Chain in under 60 seconds.</div>
+        <a class="feat-link" href="launch.html" data-i18n="feat2.link">Try it now →</a>
+      </div>
+      <div class="feature-cell fade-in" data-num="03">
+        <div class="feat-icon">💎</div>
+        <div class="feat-title" data-i18n="feat3.title">Flexible Tokenomics</div>
+        <div class="feat-desc" data-i18n="feat3.desc">Configure buy/sell taxes with multi-destination splits: marketing wallet, auto-burn, holder dividends, and liquidity pool.</div>
+        <a class="feat-link" href="launch.html" data-i18n="feat3.link">Configure →</a>
+      </div>
+      <div class="feature-cell fade-in" data-num="04">
+        <div class="feat-icon">🛡️</div>
+        <div class="feat-title" data-i18n="feat4.title">Anti-Bot Shield</div>
+        <div class="feat-desc" data-i18n="feat4.desc">Whitelist-only mint period prevents bots from sniping. Max-wallet limits and trading cooldowns give real users a fair shot.</div>
+        <a class="feat-link" href="#" data-i18n="feat4.link">Read docs →</a>
+      </div>
+      <div class="feature-cell fade-in" data-num="05">
+        <div class="feat-icon">🌊</div>
+        <div class="feat-title" data-i18n="feat5.title">Auto Liquidity</div>
+        <div class="feat-desc" data-i18n="feat5.desc">When mint completes, remaining tokens and raised BNB are automatically paired and added to PancakeSwap. Trading starts instantly.</div>
+        <a class="feat-link" href="#" data-i18n="feat5.link">How it works →</a>
+      </div>
+      <div class="feature-cell clickable fade-in" data-num="06" onclick="openRefund()">
+        <div class="feat-icon">💰</div>
+        <div class="feat-title" data-i18n="feat6.title">Refund Guarantee</div>
+        <div class="feat-desc" data-i18n="feat6.desc">Not satisfied after minting? Submit a refund request. Our team reviews every case and processes eligible refunds promptly.</div>
+        <a class="feat-link" href="#" data-i18n="feat6.link">Apply now →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="how-section">
+  <div class="container">
+    <div class="section-label fade-in" data-i18n="how.label">Process</div>
+    <h2 class="section-title fade-in" data-i18n="how.title">How It Works</h2>
+    <div class="steps-row">
+      <div class="step fade-in">
+        <div class="step-num">01</div>
+        <div class="step-title" data-i18n="step1.title">Configure Token</div>
+        <div class="step-desc" data-i18n="step1.desc">Set your token name, symbol, supply, tax rates, and dividend preferences. Takes under 2 minutes.</div>
+      </div>
+      <div class="step fade-in">
+        <div class="step-num">02</div>
+        <div class="step-title" data-i18n="step2.title">Deploy Contract</div>
+        <div class="step-desc" data-i18n="step2.desc">Connect your wallet and sign one transaction. Your audited smart contract is deployed to BNB Chain instantly.</div>
+      </div>
+      <div class="step fade-in">
+        <div class="step-num">03</div>
+        <div class="step-title" data-i18n="step3.title">Open Mint</div>
+        <div class="step-desc" data-i18n="step3.desc">Your community mints tokens at the set BNB price. All funds are locked in the contract until the target is reached.</div>
+      </div>
+      <div class="step fade-in">
+        <div class="step-num">04</div>
+        <div class="step-title" data-i18n="step4.title">Go Live</div>
+        <div class="step-desc" data-i18n="step4.desc">Target hit! Liquidity is added automatically to PancakeSwap and trading opens. No manual steps required.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA BAND ═══ -->
+<section class="cta-band">
+  <div class="container-sm">
+    <div class="cta-badge" data-i18n="cta.badge">Limited Early Access</div>
+    <h2 data-i18n="cta.h2">Ready to <span>Bake</span> Your Token?</h2>
+    <p data-i18n="cta.desc">Join the growing community of token founders launching on BREAD. Fair mints, real utility, zero drama.</p>
+    <div class="cta-btns">
+      <a href="launch.html" class="btn btn-gold btn-lg" data-i18n="cta.btn1">🍞 Start Baking Now</a>
+      <a href="#about" class="btn btn-outline btn-lg" data-i18n="cta.btn2">Learn More</a>
+    </div>
+    <p class="cta-note" data-i18n="cta.note">No coding required · Gas fees paid by deployer only · Contracts verified on BSCScan</p>
+  </div>
+</section>
+
+<!-- ═══ ABOUT ═══ -->
+<section class="about-section" id="about">
+  <div class="container">
+    <div class="about-grid">
+      <div class="about-left fade-in">
+        <div class="section-label">About</div>
+        <h2 class="section-title">Built for Builders,<br />Trusted by Holders</h2>
+        <p style="color:var(--muted);font-size:.95rem;line-height:1.85;margin-bottom:24px">
+          BREAD LAUNCH is a next-generation token launchpad built specifically for the BNB ecosystem.
+          We believe great projects deserve great infrastructure — so we baked everything from
+          fair distribution to auto-dividends directly into the contract factory.
+        </p>
+        <p style="color:var(--muted);font-size:.95rem;line-height:1.85;margin-bottom:32px">
+          Our mission: make professional-grade token launching accessible to everyone,
+          from seasoned DeFi veterans to first-time creators. Every feature is a decision
+          to lower barriers and raise standards.
+        </p>
+        <div class="social-row">
+          <a href="#" class="social-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            Twitter / X
+          </a>
+          <a href="https://t.me/pandamint_1" target="_blank" class="social-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            Telegram
+          </a>
+          <a href="https://qm.qq.com/q/FWaoFEWSEG" target="_blank" class="social-btn">
+            <svg width="16" height="16" viewBox="0 0 448 512" fill="currentColor"><path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157z"/></svg>
+            QQ Group
+          </a>
+        </div>
+      </div>
+      <div class="about-right fade-in">
+        <div class="about-card">
+          <div class="about-card-icon">⛓️</div>
+          <div class="about-card-text">
+            <h4>BNB Chain Native</h4>
+            <p>Deployed on PancakeSwap ecosystem with BSCScan-verified contracts. Full compatibility with MetaMask, TokenPocket, and WalletConnect.</p>
+          </div>
+        </div>
+        <div class="about-card">
+          <div class="about-card-icon">📊</div>
+          <div class="about-card-text">
+            <h4>Transparent Tokenomics</h4>
+            <p>All tax parameters are on-chain and immutable after launch. No hidden fees, no rug potential, no surprises. What you see is what you get.</p>
+          </div>
+        </div>
+        <div class="about-card">
+          <div class="about-card-icon">🔄</div>
+          <div class="about-card-text">
+            <h4>Automated Distribution</h4>
+            <p>BNB dividends, PANDA rewards, and liquidity additions happen automatically on every trade. Set it and forget it tokenomics.</p>
+          </div>
+        </div>
+        <div class="about-card">
+          <div class="about-card-icon">🍞</div>
+          <div class="about-card-text">
+            <h4>BREAD Philosophy</h4>
+            <p>Fresh, honest, and nourishing. Like real bread, great tokens take the right ingredients and a little time to rise. We provide the recipe.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ REFUND MODAL ═══ -->
+<div class="overlay" id="refundOverlay">
+  <div class="modal">
+    <button class="modal-x" onclick="closeRefund()">×</button>
+    <div id="refund-form-wrap">
+      <h3>💰 Refund Request</h3>
+      <p class="modal-sub">Submit your refund application. Our team will review and process eligible requests within 24–48 hours.</p>
+      <label>Your Wallet Address</label>
+      <input type="text" id="r-wallet" placeholder="0x..." />
+      <label>Token Name or Contract Address</label>
+      <input type="text" id="r-token" placeholder="e.g. PANDA or 0x56f9..." />
+      <button class="btn btn-gold" onclick="submitRefund()">Submit Application</button>
+    </div>
+    <div class="modal-ok" id="refund-ok">
+      <div class="check-icon">✅</div>
+      <h3>Request Submitted</h3>
+      <p>Your refund application has been received. We'll review it and reach out via the community channels.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <a class="footer-brand" href="#">
+        <div class="footer-brand-icon">🍞</div>
+        <span class="footer-brand-name">BREAD LAUNCH</span>
+      </a>
+      <span class="footer-copy">© 2024 BREAD LAUNCH · Built on BNB Chain · Powered by MODA Technology</span>
+      <div class="footer-links">
+        <a href="launch.html">Launch</a>
+        <a href="#features">Features</a>
+        <a href="#about">About</a>
+        <a href="https://bscscan.com" target="_blank">BSCScan</a>
+      </div>
+    </div>
+    <p style="text-align:center;margin-top:20px;font-size:.72rem;color:var(--muted2)">
+      This platform provides technical infrastructure only. Not financial advice. Crypto assets carry risk. DYOR.
+    </p>
+  </div>
+</footer>
+
+<script>
+/* ─── CONFIG ─── */
+var API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:3000'
+  : 'https://' + location.hostname;
+var FACTORY_ADDR = '0x061B33E5f016C2433c828dA521Ce37000aa18c34';
+var DEPLOYER_WALLET = '0x2aF55B34E616dCe99230fC8C694a6E6fFdF79e5b';
+var ADMIN_WALLET    = '0xF11fF8Db8DC0bd36B82154Af94A9f77d53fee8ee';
+var BSC_RPCS = ['https://bsc-dataseed1.binance.org/','https://bsc-dataseed2.binance.org/','https://bsc-dataseed3.binance.org/'];
+
+var provider = null, signer = null, account = '';
+var allTokens = [], currentTab = 'all';
+
+/* ─── INIT ─── */
+window.addEventListener('load', function(){
+  try { provider = new ethers.providers.JsonRpcProvider(BSC_RPCS[0]); }
+  catch(e) { provider = new ethers.providers.JsonRpcProvider(BSC_RPCS[1]); }
+  loadTokens();
+});
+
+/* ─── WALLET ─── */
+function getWP(){ return (window.tokenpocket && window.tokenpocket.isTokenPocket) ? window.tokenpocket : window.ethereum || null; }
+
+async function connectWallet(){
+  var wp = getWP();
+  if(!wp){ alert('No wallet detected. Install MetaMask or TokenPocket.'); return; }
+  try {
+    var bscChain = { chainId:'0x38', chainName:'BNB Smart Chain', rpcUrls:['https://bsc-dataseed.binance.org/'], nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18}, blockExplorerUrls:['https://bscscan.com/'] };
+    try { await wp.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x38'}]}); }
+    catch(e){ if(e.code===4902) await wp.request({method:'wallet_addEthereumChain',params:[bscChain]}); else throw e; }
+    var accts = await wp.request({method:'eth_requestAccounts'});
+    account = accts[0];
+    provider = new ethers.providers.Web3Provider(wp);
+    signer = provider.getSigner();
+    var chip = document.getElementById('wallet-chip');
+    chip.textContent = account.slice(0,6)+'…'+account.slice(-4);
+    chip.style.display = 'inline-flex';
+    document.getElementById('btn-wallet').textContent = 'Connected ✓';
+    document.getElementById('btn-wallet').style.borderColor = 'rgba(245,200,66,.4)';
+    document.getElementById('btn-wallet').style.color = 'var(--gold)';
+    if(allTokens.length) renderTokens();
+    wp.on('accountsChanged', function(a){ if(!a.length){ disconnectWallet(); } else { account=a[0]; chip.textContent=account.slice(0,6)+'…'+account.slice(-4); } });
+    wp.on('chainChanged', function(){ location.reload(); });
+  } catch(e){ alert('Connection failed: '+(e.reason||e.message)); }
+}
+
+function disconnectWallet(){
+  account=''; signer=null;
+  provider = new ethers.providers.JsonRpcProvider(BSC_RPCS[0]);
+  document.getElementById('wallet-chip').style.display='none';
+  document.getElementById('btn-wallet').textContent='Connect Wallet';
+  document.getElementById('btn-wallet').style.borderColor='';
+  document.getElementById('btn-wallet').style.color='';
+}
+
+function isAdmin(){ return account && account.toLowerCase()===ADMIN_WALLET.toLowerCase(); }
+
+/* ─── LOAD TOKENS ─── */
+async function loadTokens(){
+  document.getElementById('token-list').innerHTML = '<div class="table-empty">⏳ Loading from cloud...</div>';
+  var cloud = null;
+  try {
+    var r = await fetch(API_BASE+'/api/tokens',{cache:'no-cache'});
+    if(r.ok){ var d = await r.json(); if(Array.isArray(d)) cloud=d; }
+  } catch(e){}
+
+  if(cloud !== null){
+    allTokens = cloud.map(function(t){ return {addr:t.a,name:t.n,symbol:t.s,img:t.img||'',desc:t.desc||'',links:t.links||{},wl:t.wl||0,active:false,fill:0,collected:0,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:t.t||0}; });
+    allTokens.sort(function(a,b){ return b._t-a._t; });
+    renderTokens();
+    updateStats();
+    syncChain();
+    return;
+  }
+  // Fallback: on-chain
+  try {
+    var addrs = await getDeployerTokens(provider, FACTORY_ADDR, DEPLOYER_WALLET);
+    allTokens = [];
+    for(var i=0;i<addrs.length;i++){
+      try { allTokens.push(await fetchToken(addrs[i])); } catch(e){}
+    }
+    renderTokens(); updateStats();
+  } catch(e){
+    document.getElementById('token-list').innerHTML = '<div class="table-empty">⚠️ Failed to load: '+(e.message||'unknown error')+'</div>';
+  }
+}
+
+async function syncChain(){
+  for(var i=0;i<allTokens.length;i++){
+    try {
+      var t = await fetchToken(allTokens[i].addr);
+      Object.assign(allTokens[i],{active:t.active,fill:t.fill,collected:t.collected,mintCost:t.mintCost,buyTax:t.buyTax,sellTax:t.sellTax,mktBps:t.mktBps,burnBps:t.burnBps,divBps:t.divBps,liqBps:t.liqBps});
+    } catch(e){}
+  }
+  renderTokens(); updateStats();
+}
+
+async function fetchToken(addr){
+  var c = new ethers.Contract(addr, CONTRACT_DATA.ABI, provider);
+  var r = await Promise.all([
+    c.name().catch(function(){return '?';}),
+    c.symbol().catch(function(){return '?';}),
+    c.presaleActive().catch(function(){return null;}),
+    c.fillAmountBNB().catch(function(){return ethers.BigNumber.from(0);}),
+    c.totalBNBCollected().catch(function(){return ethers.BigNumber.from(0);}),
+    c.mintCostBNB().catch(function(){return ethers.BigNumber.from(0);}),
+    c.buyTaxBps().catch(function(){return ethers.BigNumber.from(0);}),
+    c.sellTaxBps().catch(function(){return ethers.BigNumber.from(0);}),
+    c.marketingBps().catch(function(){return ethers.BigNumber.from(0);}),
+    c.burnBps().catch(function(){return ethers.BigNumber.from(0);}),
+    c.dividendBps().catch(function(){return ethers.BigNumber.from(0);}),
+    c.liquidityBps().catch(function(){return ethers.BigNumber.from(0);})
+  ]);
+  var fill = parseFloat(ethers.utils.formatEther(r[3]));
+  var coll = parseFloat(ethers.utils.formatEther(r[4]));
+  var active = r[2]===true||(r[2]!==false&&coll<fill&&fill>0);
+  return {addr,name:r[0],symbol:r[1],active,fill,collected:coll,mintCost:parseFloat(ethers.utils.formatEther(r[5])),buyTax:r[6].toNumber(),sellTax:r[7].toNumber(),mktBps:r[8].toNumber(),burnBps:r[9].toNumber(),divBps:r[10].toNumber(),liqBps:r[11].toNumber()};
+}
+
+async function getDeployerTokens(prov, fAddr, dAddr){
+  var eSig = ethers.utils.id('TokenDeployed(address,bytes32,address)');
+  var dTopic = ethers.utils.hexZeroPad(dAddr, 32);
+  var cur = await prov.getBlockNumber();
+  var from = Math.max(0, cur-3000000);
+  var logs = [];
+  try {
+    logs = await prov.getLogs({address:fAddr,topics:[eSig,null,dTopic],fromBlock:'0x'+from.toString(16),toBlock:'latest'});
+  } catch(e){
+    var chunk=3000;
+    for(var b=from;b<=cur;b+=chunk){
+      try { logs=logs.concat(await prov.getLogs({address:fAddr,topics:[eSig,null,dTopic],fromBlock:'0x'+b.toString(16),toBlock:'0x'+Math.min(b+chunk-1,cur).toString(16)})); } catch(e2){}
+    }
+  }
+  return logs.sort(function(a,b){return b.blockNumber-a.blockNumber;}).map(function(l){return '0x'+l.topics[1].slice(26);});
+}
+
+/* ─── RENDER ─── */
+function setTab(tab, el){
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  el.classList.add('active');
+  renderTokens();
+}
+
+function renderTokens(){
+  var list = allTokens.filter(function(t){
+    if(currentTab==='live') return t.active;
+    if(currentTab==='done') return !t.active;
+    return true;
+  });
+  var el = document.getElementById('token-list');
+  if(!list.length){
+    el.innerHTML = '<div class="table-empty">No tokens found. <a href="launch.html" style="color:var(--gold)">Launch the first one →</a></div>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(t,i){
+    var pct = t.fill>0?Math.min(100,(t.collected/t.fill)*100):0;
+    var isLive = t.active;
+    var bscUrl = 'https://ave.ai/token/'+t.addr+'-bsc?from=Token';
+    var hasImg = t.img && t.img.startsWith('data:');
+    var colors = ['#f5c842','#ff8c00','#e8a020','#fbbf24','#f59e0b','#d97706'];
+    var c = colors[i%colors.length];
+    var avatarHtml = hasImg
+      ? '<div class="row-avatar"><img src="'+t.img+'" /></div>'
+      : '<div class="row-avatar" style="background:'+c+'22;color:'+c+';border:1px solid '+c+'33">'+(t.symbol||'?').slice(0,3).toUpperCase()+'</div>';
+
+    html += '<div class="token-row" onclick="openToken(\''+t.addr+'\')" title="View on Ave.ai">';
+
+    if(isAdmin()){
+      html += '<div style="display:flex;align-items:center;gap:6px"><span class="row-num">'+(i+1)+'</span><button class="del-btn" onclick="event.stopPropagation();deleteToken(\''+t.addr+'\')">✕</button></div>';
+    } else {
+      html += '<div class="row-num">'+(i+1)+'</div>';
+    }
+
+    html += '<div class="row-token">'+avatarHtml+'<div><div class="row-name">'+escH(t.name)+'</div><div class="row-symbol">$'+escH(t.symbol)+'</div></div></div>';
+    html += '<div class="row-status"><span class="pill '+(isLive?'pill-live':'pill-done')+'">'+(isLive?'LIVE':'DONE')+'</span></div>';
+    html += '<div class="row-progress">';
+    html += '<div class="progress-bar"><div class="progress-fill '+(isLive?'fill-live':'fill-done')+'" style="width:'+pct.toFixed(1)+'%"></div></div>';
+    html += '<div class="progress-info"><span>'+pct.toFixed(1)+'%</span><span>'+t.collected.toFixed(3)+'/'+t.fill.toFixed(2)+' BNB</span></div>';
+    html += '</div>';
+    html += '<div class="row-tax" style="font-size:.78rem"><span style="color:#34d399">B '+fmtTax(t.buyTax)+'</span> / <span style="color:#f87171">S '+fmtTax(t.sellTax)+'</span></div>';
+    html += '<div class="row-action"><button class="btn btn-outline" onclick="event.stopPropagation();openToken(\''+t.addr+'\')">View →</button></div>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function openToken(addr){ window.open('https://ave.ai/token/'+addr+'-bsc?from=Token','_blank'); }
+
+async function deleteToken(addr){
+  if(!confirm('Remove token '+addr.slice(0,10)+'... from the listing?\n\nThis only removes it from the display. The contract remains on-chain.')) return;
+  var r = await fetch(API_BASE+'/api/tokens',{method:'DELETE',headers:{'Content-Type':'application/json','X-Admin-Wallet':account},body:JSON.stringify({a:addr})});
+  if(!r.ok){ var e=await r.json().catch(function(){return {};}); alert(e.error||'Delete failed'); return; }
+  allTokens = allTokens.filter(function(t){return t.addr!==addr;});
+  renderTokens(); updateStats();
+}
+
+function updateStats(){
+  var live = allTokens.filter(function(t){return t.active;}).length;
+  var done = allTokens.filter(function(t){return !t.active;}).length;
+  var raised = allTokens.reduce(function(s,t){return s+t.collected;},0);
+  setEl('s-tokens', allTokens.length);
+  setEl('s-raised', raised.toFixed(2)+' BNB');
+  setEl('s-live', live);
+  setEl('s-done', done);
+  setEl('h-tokens', allTokens.length);
+  setEl('h-raised', raised.toFixed(1));
+  setEl('h-done', done);
+}
+
+function setEl(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
+function fmtTax(bps){ return (bps/100).toFixed(1)+'%'; }
+function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ─── REFUND MODAL ─── */
+function openRefund(){
+  document.getElementById('refundOverlay').classList.add('open');
+  document.getElementById('refund-form-wrap').style.display='block';
+  document.getElementById('refund-ok').style.display='none';
+  document.getElementById('r-wallet').value='';
+  document.getElementById('r-token').value='';
+}
+function closeRefund(){ document.getElementById('refundOverlay').classList.remove('open'); }
+document.getElementById('refundOverlay').addEventListener('click',function(e){if(e.target===this) closeRefund();});
+
+async function submitRefund(){
+  var w=document.getElementById('r-wallet').value.trim();
+  var t=document.getElementById('r-token').value.trim();
+  if(!w||!t){alert('Please fill in both fields.');return;}
+  var btn=event.target; btn.disabled=true; btn.textContent='Submitting...';
+  var msg='Mint Refund Request\n\nWallet: '+w+'\nToken: '+t+'\nTime: '+new Date().toLocaleString();
+  try {
+    var r=await fetch('/api/refund',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:w,token:t})});
+    var d=await r.json();
+    if(d.success){ document.getElementById('refund-form-wrap').style.display='none'; document.getElementById('refund-ok').style.display='block'; return; }
+  } catch(e){}
+  try {
+    var dr=await fetch('https://oapi.dingtalk.com/robot/send?access_token=0aae4ea4b8f0426f91fe97181b97353763e8902795b4a4991d58b39996c5cbd7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({msgtype:'text',text:{content:msg}})});
+    var dd=await dr.json();
+    if(dd.errcode===0){ document.getElementById('refund-form-wrap').style.display='none'; document.getElementById('refund-ok').style.display='block'; return; }
+  } catch(e2){}
+  alert('Network error. Please try again later.');
+  btn.disabled=false; btn.textContent='Submit Application';
+}
+
+/* ─── i18n LANGUAGE SWITCH ─── */
+var LANG = 'en';
+
+var I18N = {
+  en: {
+    'nav.about':   'About',
+    'nav.launch':  'Launch Token →',
+    'hero.tag':    '🍞 Fresh from the Oven · BNB Chain',
+    'hero.h1':     'Launch Your Token<br /><em id="hero-em">No Code Required</em>',
+    'hero.h1em':   'No Code Required',
+    'hero.desc':   'BREAD LAUNCH is the premier fair-mint token factory on BNB Chain. Deploy audit-ready contracts in minutes. Built-in dividend system, auto-liquidity, and anti-bot protection baked right in.',
+    'hero.btn1':   '🚀 Launch Now',
+    'hero.btn2':   'Browse Tokens',
+    'stat.launched':        'Tokens Launched',
+    'stat.raised':          'BNB Raised',
+    'stat.completed':       'Completed',
+    'stat.totalRaised':     'Total BNB Raised',
+    'stat.activeMints':     'Active Mints',
+    'stat.completedLaunches': 'Completed Launches',
+    'tokens.label':  'Token Marketplace',
+    'tokens.title':  'All Launches',
+    'feat.label':  'Why BREAD LAUNCH',
+    'feat.title':  'Everything Baked In',
+    'feat1.title': 'Audited Contracts',
+    'feat1.desc':  'Every contract template is carefully reviewed for common exploits. No backdoors, no owner drain functions, no honeypot traps.',
+    'feat1.link':  'View Template →',
+    'feat2.title': 'One-Click Deploy',
+    'feat2.desc':  'Fill in your token parameters and hit deploy. Your ERC-20 compliant contract is live on BNB Chain in under 60 seconds.',
+    'feat2.link':  'Try it now →',
+    'feat3.title': 'Flexible Tokenomics',
+    'feat3.desc':  'Configure buy/sell taxes with multi-destination splits: marketing wallet, auto-burn, holder dividends, and liquidity pool.',
+    'feat3.link':  'Configure →',
+    'feat4.title': 'Anti-Bot Shield',
+    'feat4.desc':  'Whitelist-only mint period prevents bots from sniping. Max-wallet limits and trading cooldowns give real users a fair shot.',
+    'feat4.link':  'Read docs →',
+    'feat5.title': 'Auto Liquidity',
+    'feat5.desc':  'When mint completes, remaining tokens and raised BNB are automatically paired and added to PancakeSwap. Trading starts instantly.',
+    'feat5.link':  'How it works →',
+    'feat6.title': 'Refund Guarantee',
+    'feat6.desc':  'Not satisfied after minting? Submit a refund request. Our team reviews every case and processes eligible refunds promptly.',
+    'feat6.link':  'Apply now →',
+    'how.label':  'Process',
+    'how.title':  'How It Works',
+    'step1.title': 'Configure Token',
+    'step1.desc':  'Set your token name, symbol, supply, tax rates, and dividend preferences. Takes under 2 minutes.',
+    'step2.title': 'Deploy Contract',
+    'step2.desc':  'Connect your wallet and sign one transaction. Your audited smart contract is deployed to BNB Chain instantly.',
+    'step3.title': 'Open Mint',
+    'step3.desc':  'Your community mints tokens at the set BNB price. All funds are locked in the contract until the target is reached.',
+    'step4.title': 'Go Live',
+    'step4.desc':  'Target hit! Liquidity is added automatically to PancakeSwap and trading opens. No manual steps required.',
+    'cta.badge': 'Limited Early Access',
+    'cta.h2':    'Ready to <span>Bake</span> Your Token?',
+    'cta.desc':  'Join the growing community of token founders launching on BREAD. Fair mints, real utility, zero drama.',
+    'cta.btn1':  '🍞 Start Baking Now',
+    'cta.btn2':  'Learn More',
+    'cta.note':  'No coding required · Gas fees paid by deployer only · Contracts verified on BSCScan',
+  },
+  zh: {
+    'nav.about':   '关于我们',
+    'nav.launch':  '发射代币 →',
+    'hero.tag':    '🍞 BNB链上公平铸币平台',
+    'hero.h1':     '发射你的代币<br /><em id="hero-em">无需写一行代码</em>',
+    'hero.h1em':   '无需写一行代码',
+    'hero.desc':   'BREAD LAUNCH 是 BNB 链上领先的公平铸币代币工厂。几分钟内完成部署，内置分红系统、自动流动性和防机器人保护，开箱即用。',
+    'hero.btn1':   '🚀 立即发射',
+    'hero.btn2':   '浏览代币',
+    'stat.launched':        '已发射代币',
+    'stat.raised':          '已募集 BNB',
+    'stat.completed':       '已完成',
+    'stat.totalRaised':     '总募集 BNB',
+    'stat.activeMints':     '进行中铸币',
+    'stat.completedLaunches': '已完成发射',
+    'tokens.label':  '代币广场',
+    'tokens.title':  '全部发射项目',
+    'feat.label':  '为何选择 BREAD LAUNCH',
+    'feat.title':  '六大核心能力',
+    'feat.desc':   '六大核心功能，零妥协。用专业团队级别的基础设施发射你的 Meme 代币。',
+    'feat1.title': '审计级合约',
+    'feat1.desc':  '每个合约模板均经过安全审查，无后门、无 Owner 提款函数、无貔貅陷阱。',
+    'feat1.link':  '查看模板 →',
+    'feat2.title': '一键部署',
+    'feat2.desc':  '填写代币参数并点击部署，符合 ERC-20 标准的合约在 60 秒内上线 BNB Chain。',
+    'feat2.link':  '立即体验 →',
+    'feat3.title': '灵活代币经济',
+    'feat3.desc':  '可配置买卖税，多目标分配：营销钱包、自动销毁、持币人分红、流动性池。',
+    'feat3.link':  '去配置 →',
+    'feat4.title': '防机器人盾牌',
+    'feat4.desc':  '仅白名单铸币阶段防止机器人狙击，最大持仓限制和交易冷却给真实用户公平机会。',
+    'feat4.link':  '查看文档 →',
+    'feat5.title': '自动流动性',
+    'feat5.desc':  '铸币完成后，剩余代币和募集的 BNB 自动配对加入 PancakeSwap，交易立即开放。',
+    'feat5.link':  '运作原理 →',
+    'feat6.title': '铸币可退款',
+    'feat6.desc':  '铸币后不满意？提交退款申请，团队审核每一笔请求并及时处理符合条件的退款。',
+    'feat6.link':  '立即申请 →',
+    'how.label':  '流程',
+    'how.title':  '如何运作',
+    'step1.title': '配置代币',
+    'step1.desc':  '设置代币名称、符号、供应量、税率和分红偏好，不到 2 分钟完成。',
+    'step2.title': '部署合约',
+    'step2.desc':  '连接钱包并签署一笔交易，审计级智能合约即刻部署到 BNB Chain。',
+    'step3.title': '开放铸币',
+    'step3.desc':  '社区以设定的 BNB 价格铸造代币，所有资金锁定在合约中直到目标达成。',
+    'step4.title': '正式上线',
+    'step4.desc':  '目标达成！流动性自动加入 PancakeSwap，交易开放，无需任何手动操作。',
+    'cta.badge': '早期限量席位',
+    'cta.h2':    '准备好<span>烘焙</span>你的代币了吗？',
+    'cta.desc':  '加入越来越多在 BREAD 上发射的代币创始人社区。公平铸币、真实价值、零套路。',
+    'cta.btn1':  '🍞 立即开始发射',
+    'cta.btn2':  '了解更多',
+    'cta.note':  '无需编程 · Gas 费仅由部署者支付 · 合约已在 BSCScan 验证',
+  }
+};
+
+function toggleLang(){
+  LANG = LANG === 'en' ? 'zh' : 'en';
+  document.getElementById('lang-btn').textContent = LANG === 'en' ? '中文' : 'EN';
+  applyLang();
+}
+
+function applyLang(){
+  var dict = I18N[LANG];
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var key = el.getAttribute('data-i18n');
+    if(dict[key] !== undefined){
+      el.innerHTML = dict[key];
+    }
+  });
+  // 连接钱包按钮也跟随切换
+  var wb = document.getElementById('btn-wallet');
+  if(wb && wb.textContent.indexOf('0x') < 0){
+    wb.textContent = LANG === 'zh' ? '连接钱包' : 'Connect Wallet';
+  }
+  // token 表格空状态文字
+  var empty = document.querySelector('.table-empty');
+  if(empty) empty.textContent = LANG === 'zh' ? '⏳ 正在从链上加载代币...' : '⏳ Loading tokens from chain...';
+}
+
+/* ─── SCROLL FADE IN ─── */
+var io = new IntersectionObserver(function(entries){
+  entries.forEach(function(e){ if(e.isIntersecting) e.target.classList.add('visible'); });
+},{threshold:.1});
+document.querySelectorAll('.fade-in').forEach(function(el){io.observe(el);});
+</script>
+</body>
+</html>
