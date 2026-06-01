@@ -858,6 +858,8 @@ var I18N = {
     'hint.lpTokenPct':'每笔 mint 中配对 BNB 加入流动性的代币占比',
     'field.minHold': '分红最低持有量',
     'hint.minHold':  '获得 BNB 分红需持有的最低代币数量',
+    'field.vanity':   '合约靓号后缀',
+    'hint.vanity':   '自定义合约地址尾号（1-8位十六进制）。越长碰撞越慢，留空则随机地址。',
     'field.whitelist':'仅白名单 Mint',
     'hint.whitelist':'预售阶段仅白名单地址可以 Mint',
     'card.tax':      '税率设置',
@@ -1011,6 +1013,73 @@ function setStep(n){
   }
 }
 
+/* ─── VANITY ADDRESS (CREATE2) ─── */
+// Pre-computed vanity deployer addresses (update after deploying VanityDeployer)
+// BSC mainnet: update this after deploying once
+var VANITY_FACTORY_ADDR = ''; // ← 部署 VanityDeployer 后填入地址
+
+async function findSaltForSuffix(suffix, creationCode, signerAddr) {
+  suffix = suffix.toLowerCase();
+  // Salt 循环：从随机值开始
+  var salt = ethers.utils.randomBytes(32);
+  var attempts = 0;
+  var maxAttempts = suffix.length <= 3 ? 50000 : (suffix.length <= 4 ? 200000 : 800000);
+  setModalStatus('🔍 ' + (currentLang==='zh'?'碰撞尾号: ':'Vanity mining: ') + '0x...' + suffix + ' (' + (currentLang==='zh'?'尝试':'attempts') + ' 0)');
+  while (attempts < maxAttempts) {
+    // 计算 CREATE2 地址: keccak256(0xFF + factoryAddr + salt + keccak256(creationCode))
+    var saltHex = ethers.utils.hexlify(salt);
+    var codeHash = ethers.utils.keccak256(creationCode);
+    // 手动计算 CREATE2 地址
+    var encoded = ethers.utils.solidityPack(
+      ['bytes1','address','bytes32','bytes32'],
+      ['0xff', VANITY_FACTORY_ADDR, saltHex, codeHash]
+    );
+    var addr = '0x' + ethers.utils.keccak256(encoded).slice(26); // 取后 20 字节
+    if (addr.toLowerCase().endsWith(suffix)) {
+      return { salt: saltHex, address: addr };
+    }
+    // salt + 1
+    var saltBN = ethers.BigNumber.from(saltHex);
+    salt = ethers.utils.arrayify(saltBN.add(1).toHexString());
+    if (salt.length < 32) { salt = ethers.utils.zeroPad(salt, 32); }
+    attempts++;
+    if (attempts % 10000 === 0) {
+      setModalStatus('🔍 ' + (currentLang==='zh'?'碰撞尾号: 0x...':'Vanity mining: 0x...') + suffix + ' (' + attempts + ' ' + (currentLang==='zh'?'次':'attempts') + ')');
+      await new Promise(r => setTimeout(r, 0)); // 让 UI 更新
+    }
+  }
+  throw new Error('Vanity suffix not found within ' + maxAttempts + ' attempts. Try a shorter suffix.');
+}
+
+async function deployWithCreate2(creationCode, saltHex, signer) {
+  if (!VANITY_FACTORY_ADDR) {
+    alert((currentLang==='zh'?'请先部署 VanityDeployer 工厂合约并填入地址。':'Please deploy VanityDeployer factory and set VANITY_FACTORY_ADDR.'));
+    return null;
+  }
+  var factoryABI = [{"inputs":[{"name":"bytecode","type":"bytes"},{"name":"salt","type":"bytes32"}],"name":"deploy","outputs":[{"name":"addr","type":"address"}],"stateMutability":"payable","type":"function"}];
+  var factory = new ethers.Contract(VANITY_FACTORY_ADDR, factoryABI, signer);
+  setModalStatus((currentLang==='zh'?'部署中...':'Deploying...'));
+  var tx = await factory.deploy(creationCode, saltHex, { value: 0 });
+  setModalStatus((currentLang==='zh'?'等待确认...':'Waiting for confirmation...'));
+  var receipt = await tx.wait(1);
+  // 从事务日志里找部署地址
+  var deployedAddr = null;
+  for (var i = 0; i < receipt.logs.length; i++) {
+    var log = receipt.logs[i];
+    if (log.address.toLowerCase() === VANITY_FACTORY_ADDR.toLowerCase() && log.topics.length >= 2) {
+      deployedAddr = '0x' + log.topics[1].slice(26);
+      break;
+    }
+  }
+  // Fallback: 用 CREATE2 公式算
+  if (!deployedAddr) {
+    var codeHash = ethers.utils.keccak256(creationCode);
+    var encoded = ethers.utils.solidityPack(['bytes1','address','bytes32','bytes32'],['0xff',VANITY_FACTORY_ADDR,saltHex,codeHash]);
+    deployedAddr = '0x' + ethers.utils.keccak256(encoded).slice(26);
+  }
+  return deployedAddr;
+}
+
 /* ─── DEPLOY ─── */
 async function deployToken(){
   if(!signer){ alert('Please connect your wallet first.'); return; }
@@ -1059,11 +1128,12 @@ async function deployToken(){
   setStep(3);
 
   try {
-    var ABI = CONTRACT_DATA.ABI;
     var BYTECODE = CONTRACT_DATA.BYTECODE;
-    var factory = new ethers.ContractFactory(ABI, BYTECODE, signer);
+    var ABI = CONTRACT_DATA.ABI;
 
-    var args = [
+    // 编码构造函数参数
+    var iface = new ethers.utils.Interface(ABI);
+    var encodedArgs = iface.encodeDeploy([
       name, symbol,
       ethers.BigNumber.from(supply),
       mintWei, fillWei,
@@ -1073,14 +1143,48 @@ async function deployToken(){
       minHoldWei,
       presalePct, wlOnly,
       lpTokenPct
-    ];
+    ]).slice(2); // 去掉 0x
 
-    setModalStatus(I18N[currentLang]['modal.sign']);
-    var contract = await factory.deploy(...args);
+    var creationCode = BYTECODE + encodedArgs;
+    var suffix = document.getElementById('vanitySuffix').value.trim().toLowerCase();
+    suffix = suffix.replace(/^0x/, '');
 
-    setModalStatus((currentLang==='zh'?'等待确认...':'Waiting for confirmation...'));
-    var receipt = await contract.deployTransaction.wait(1);
-    deployedContract = contract.address;
+    var deployedContract = null;
+
+    if (suffix.length >= 1 && suffix.length <= 8 && VANITY_FACTORY_ADDR) {
+      // CREATE2 尾号碰撞
+      setModalStatus((currentLang==='zh'?'🔍 碰撞尾号中...':'🔍 Vanity mining...'));
+      try {
+        var result = await findSaltForSuffix(suffix, creationCode, currentAccount);
+        deployedContract = await deployWithCreate2(creationCode, result.salt, signer);
+      } catch(e) {
+        if (confirm((currentLang==='zh'?'尾号碰撞失败或超时：':'Vanity mining failed or timeout: ') + e.message + '\n\n' + (currentLang==='zh'?'是否用随机地址继续部署？':'Deploy with random address instead?')) {
+          suffix = ''; // 降级为普通部署
+        } else {
+          closeModal(); return;
+        }
+      }
+    }
+
+    if (!deployedContract) {
+      // 普通部署（无尾号 或 碰撞失败用户选择跳过）
+      setModalStatus(I18N[currentLang]['modal.sign']);
+      var factory = new ethers.ContractFactory(ABI, BYTECODE, signer);
+      var contract = await factory.deploy(
+        name, symbol,
+        ethers.BigNumber.from(supply),
+        mintWei, fillWei,
+        Math.round(buyT * 100), Math.round(sellT * 100),
+        mktBps * 100, burnBps * 100, divBps * 100, liqBps * 100,
+        fundAddr,
+        minHoldWei,
+        presalePct, wlOnly,
+        lpTokenPct
+      );
+      setModalStatus((currentLang==='zh'?'等待确认...':'Waiting for confirmation...'));
+      var receipt = await contract.deployTransaction.wait(1);
+      deployedContract = contract.address;
+    }
 
     // Register to cloud API
     try {
