@@ -575,6 +575,14 @@ contract ModaMintToken is IERC20, Ownable {
         require(amount > 0, "Amount zero");
         require(_balances[from] >= amount, "Insufficient balance");
 
+        // During auto-swap: contract sends tokens to pair → skip all logic, pure transfer only
+        if (inSwap && from == address(this) && to == uniswapV2Pair) {
+            _balances[from] -= amount;
+            _balances[to] += amount;
+            emit Transfer(from, to, amount);
+            return;
+        }
+
         if (!inSwap) _tryAutoSwap();
 
         bool isDexTransfer = (from == uniswapV2Pair || to == uniswapV2Pair);
