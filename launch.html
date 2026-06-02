@@ -1201,9 +1201,10 @@ async function deployToken(){
     setStep(4);
 
   } catch(e){
+    console.error('[Deploy Error]', e);
     document.getElementById('modal-icon').textContent = '❌';
     document.getElementById('modal-title').textContent = I18N[currentLang]['modal.fail'];
-    document.getElementById('modal-desc').textContent = (e.reason||e.message||'Unknown error.');
+    document.getElementById('modal-desc').textContent = (e.reason||e.message||'Unknown error.') + '\n\nStack: ' + (e.stack||'N/A');
     document.getElementById('modal-status').style.display = 'none';
     setStep(2);
   }
