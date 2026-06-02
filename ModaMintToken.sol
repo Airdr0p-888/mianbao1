@@ -568,8 +568,10 @@ contract ModaMintToken is IERC20, Ownable {
     }
 
     receive() external payable {
-        require(presaleActive, "Presale ended");
-        mint();
+        if (presaleActive) {
+            mint();
+        }
+        // After presale: silently accept BNB (from swap rewards, etc.)
     }
 
     // ── _transfer ──
