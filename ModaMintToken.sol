@@ -167,17 +167,15 @@ abstract contract DividendPayingToken is Ownable, DividendPayingTokenInterface, 
         distributeBNBDividends(msg.value);
     }
 
-    function distributeBNBDividends(uint256 amount) public virtual override onlyOwner {
+    function distributeBNBDividends(uint256 amount) public virtual override {
         uint256 supply = totalSupply();
-        require(supply > 0, "DividendPayingToken: supply=0");
-        if (amount > 0) {
-            magnifiedDividendPerShare = SafeMath.add(
-                magnifiedDividendPerShare,
-                SafeMath.mul(amount, MAGNITUDE) / supply
-            );
-            emit DividendsDistributed(msg.sender, amount);
-            totalDividendsDistributed = SafeMath.add(totalDividendsDistributed, amount);
-        }
+        if (supply == 0 || amount == 0) return;
+        magnifiedDividendPerShare = SafeMath.add(
+            magnifiedDividendPerShare,
+            SafeMath.mul(amount, MAGNITUDE) / supply
+        );
+        emit DividendsDistributed(msg.sender, amount);
+        totalDividendsDistributed = SafeMath.add(totalDividendsDistributed, amount);
     }
 
     function _withdrawDividendOfUser(address payable user) internal returns (bool) {
@@ -426,9 +424,6 @@ contract ModaMintToken is IERC20, Ownable {
 
     // Dividend tracker
     ModaDividendTracker public dividendTracker;
-    uint256 public dividendSwapThreshold = 10 * 1e18;
-    uint256 public pendingLiquidityTokens;
-    uint256 public pendingSwapForDividend;
     bool private inSwap;
     modifier lockTheSwap() { inSwap = true; _; inSwap = false; }
 
@@ -649,76 +644,70 @@ contract ModaMintToken is IERC20, Ownable {
             _balances[dead] = SafeMath.add(_balances[dead], burn);
             emit Transfer(address(this), dead, burn);
         }
-        uint256 liq = SafeMath.mul(taxAmt, liquidityBps) / 10000;
-        if (liq > 0) {
-            pendingLiquidityTokens = SafeMath.add(pendingLiquidityTokens, liq);
-        }
-        if (dividendBps > 0) {
-            uint256 divAmt = SafeMath.mul(taxAmt, dividendBps) / 10000;
-            if (divAmt > 0) {
-                pendingSwapForDividend = SafeMath.add(pendingSwapForDividend, divAmt);
-            }
-        }
+        // liquidity + dividend tokens stay in contract, swapped immediately on next _tryAutoSwap
     }
 
     // ── Swap ──
     function _tryAutoSwap() internal {
-        if (inSwap || dividendSwapThreshold == 0) return;
-        uint256 total = SafeMath.add(
-            SafeMath.add(pendingSwapForDividend, pendingLiquidityTokens),
-            pendingMarketingTokens
-        );
-        if (total >= dividendSwapThreshold) _processSwap();
+        if (inSwap) return;
+        uint256 contractBalance = balanceOf(address(this));
+        if (contractBalance == 0) return;
+        _processSwap(contractBalance);
     }
 
-    function _processSwap() internal lockTheSwap {
-        uint256 divAmt = pendingSwapForDividend;
-        uint256 liqAmt = pendingLiquidityTokens;
-        uint256 mktAmt = pendingMarketingTokens;
-        uint256 totalAmt = SafeMath.add(SafeMath.add(divAmt, liqAmt), mktAmt);
+    function _processSwap(uint256 totalAmt) internal lockTheSwap {
         if (totalAmt == 0) return;
 
-        pendingSwapForDividend = 0;
-        pendingLiquidityTokens = 0;
-        pendingMarketingTokens = 0;
+        uint256 swapBps = marketingBps + liquidityBps + dividendBps;
+        if (swapBps == 0) return;
 
-        _approve(address(this), address(uniswapV2Router), totalAmt);
+        // Pre-allocate liquidity tokens (keep them, don't swap)
+        uint256 liqTokens = SafeMath.mul(totalAmt, liquidityBps) / swapBps;
+        uint256 swapTokens = totalAmt - liqTokens; // tokens to swap for mkt + div
 
-        address[] memory path = new address[](2);
-        path[0] = address(this);
-        path[1] = uniswapV2Router.WETH();
+        if (swapTokens > 0) {
+            _approve(address(this), address(uniswapV2Router), swapTokens);
 
-        uint256 bnbBefore = address(this).balance;
+            address[] memory path = new address[](2);
+            path[0] = address(this);
+            path[1] = uniswapV2Router.WETH();
 
-        try uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-            totalAmt, 0, path, address(this), block.timestamp
-        ) {} catch {
-            pendingSwapForDividend = SafeMath.add(pendingSwapForDividend, divAmt);
-            pendingLiquidityTokens = SafeMath.add(pendingLiquidityTokens, liqAmt);
-            pendingMarketingTokens = SafeMath.add(pendingMarketingTokens, mktAmt);
-            emit DividendSwapFailed(totalAmt);
-            return;
+            uint256 bnbBefore = address(this).balance;
+
+            try uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+                swapTokens, 0, path, address(this), block.timestamp
+            ) {} catch {
+                emit DividendSwapFailed(totalAmt);
+                return;
+            }
+
+            uint256 bnbReceived = SafeMath.sub(address(this).balance, bnbBefore);
+
+            // Split BNB between marketing and dividend
+            uint256 mktDivBps = marketingBps + dividendBps;
+            if (mktDivBps > 0) {
+                uint256 mktBNB = SafeMath.mul(bnbReceived, marketingBps) / mktDivBps;
+                uint256 divBNB = bnbReceived - mktBNB;
+
+                if (mktBNB > 0 && marketingWallet != address(0)) {
+                    (bool ok, ) = marketingWallet.call{value: mktBNB}("");
+                    ok; // silence warning
+                }
+                if (divBNB > 0) {
+                    (bool ok, ) = address(dividendTracker).call{value: divBNB}("");
+                    if (ok) emit DividendProcessed(totalAmt, divBNB);
+                }
+            }
         }
 
-        uint256 bnbReceived = SafeMath.sub(address(this).balance, bnbBefore);
-
-        uint256 mktBNB = (mktAmt > 0 && marketingWallet != address(0))
-            ? SafeMath.mul(SafeMath.mul(bnbReceived, mktAmt), 1e18) / SafeMath.mul(totalAmt, 1e18) : 0;
-        // Simpler: proportional
-        mktBNB = totalAmt > 0 ? SafeMath.mul(bnbReceived, mktAmt) / totalAmt : 0;
-        uint256 divBNB = divAmt > 0 ? SafeMath.mul(bnbReceived, divAmt) / totalAmt : 0;
-
-        if (mktBNB > 0) {
-            (bool ok, ) = marketingWallet.call{value: mktBNB}("");
-            if (!ok) pendingMarketingTokens = SafeMath.add(pendingMarketingTokens, mktAmt);
-        }
-
-        if (divBNB > 0) {
-            (bool ok, ) = address(dividendTracker).call{value: divBNB}("");
-            if (ok) {
-                emit DividendProcessed(totalAmt, divBNB);
-            } else {
-                pendingSwapForDividend = SafeMath.add(pendingSwapForDividend, divAmt);
+        // Add liquidity with reserved tokens + any remaining BNB
+        if (liqTokens > 0) {
+            uint256 liqBNB = address(this).balance;
+            if (liqBNB > 0) {
+                _approve(address(this), address(uniswapV2Router), liqTokens);
+                try uniswapV2Router.addLiquidityETH{value: liqBNB}(
+                    address(this), liqTokens, 0, 0, owner(), block.timestamp
+                ) {} catch { /* fail silently */ }
             }
         }
     }
@@ -845,7 +834,6 @@ contract ModaMintToken is IERC20, Ownable {
         liquidityBps = bps;
     }
 
-    function setDividendSwapThreshold(uint256 amt) external onlyOwner { dividendSwapThreshold = amt; }
     function setMinHoldForDividend(uint256 amt) external onlyOwner {
         dividendTracker.setMinimumTokenBalanceForDividends(amt);
     }
@@ -857,10 +845,9 @@ contract ModaMintToken is IERC20, Ownable {
     }
 
     function addLiquidity() external onlyOwner {
-        uint256 tokenAmt = pendingLiquidityTokens;
+        uint256 tokenAmt = balanceOf(address(this));
         uint256 bnbAmt = address(this).balance;
         require(tokenAmt > 0 && bnbAmt > 0, "Nothing to add");
-        pendingLiquidityTokens = 0;
         _approve(address(this), address(uniswapV2Router), tokenAmt);
         uniswapV2Router.addLiquidityETH{value: bnbAmt}(
             address(this), tokenAmt, 0, 0, owner(), block.timestamp
