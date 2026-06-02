@@ -193,7 +193,7 @@ async function refreshInfo(){
         contract.tradingActive(),contract.presaleActive(),
         contract.whitelistMintOnly(),contract.mintCostBNB(),contract.fillAmountBNB(),
         contract.tokensPerMint(),contract.lpTokenPct(),
-        contract.dividendSwapThreshold(),contract.minHoldForDividend().catch(function(){return 0n;}),
+        contract.dividendSwapThreshold(),contract.minimumTokenBalanceForDividends(),
         contract.uniswapV2Pair(),contract.uniswapV2Router(),
         contract.decimals()
       ]);

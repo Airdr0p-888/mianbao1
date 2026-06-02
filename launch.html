@@ -328,22 +328,6 @@
     .btn-close { background: transparent; border: 1px solid var(--border); color: var(--muted2); padding: 9px 22px; border-radius: 50px; cursor: pointer; font-size: .85rem; transition: all .2s; }
     .btn-close:hover { color: var(--text); border-color: var(--border2); }
 
-    /* verify */
-    .verify-section { margin-top: 16px; text-align: left; }
-    .verify-body { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
-    .verify-code { background: #0d0d0d; color: #a5b4fc; border-radius: 8px; padding: 12px 14px; font-family: var(--mono); font-size: .72rem; line-height: 1.6; overflow-x: auto; white-space: pre; margin: 8px 0; position: relative; }
-    .verify-code .copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,.1); border: none; color: var(--muted); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: .72rem; }
-    .verify-code .copy-btn:hover { background: rgba(255,255,255,.2); color: var(--text); }
-    .verify-param-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: .8rem; }
-    .verify-param-label { color: var(--muted); }
-    .verify-param-value { font-family: var(--mono); color: var(--gold); word-break: break-all; }
-    .verify-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-    .verify-btn { padding: 8px 16px; border-radius: 8px; font-size: .8rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all .2s; }
-    .verify-btn:hover { border-color: var(--gold); color: var(--gold); }
-    .verify-btn.primary { background: var(--gold); color: #0a0a0a; border-color: var(--gold); }
-    .verify-btn.primary:hover { opacity: .85; }
-    .verify-note { font-size: .74rem; color: var(--muted2); margin-top: 8px; }
-    .verify-json-preview { background: #0d0d0d; color: #a5b4fc; border-radius: 8px; padding: 10px 12px; font-family: var(--mono); font-size: .68rem; line-height: 1.5; overflow-x: auto; max-height: 260px; overflow-y: auto; margin: 8px 0; white-space: pre; }
 
     /* protect info */
     .protect-info { background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; font-size: .8rem; color: var(--muted); line-height: 1.7; margin-top: 8px; }
@@ -359,7 +343,7 @@
   <script src="ethers.umd.min.js"></script>
   <script src="contract_data.js?v=20260601r5"></script>
   <script>
-    // v20260602r1: VanityDeployer v2 (auto transferOwnership to tx.origin)
+    // v20260602r2: removed BSCScan verify section from deploy modal
     if(typeof CONTRACT_DATA !== 'undefined' && typeof CONTRACT_DATA.BYTECODE === 'string'){
       var bcLen = CONTRACT_DATA.BYTECODE.length;
       if(Math.abs(bcLen - 39164) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 39164'); }
@@ -718,38 +702,6 @@
       <div class="contract-box" id="contract-box">
         <div class="contract-label">Contract Address</div>
         <div class="contract-addr" id="contract-addr-text"></div>
-      </div>
-      <div class="verify-section" id="verify-section" style="display:none">
-        <div class="verify-body">
-          <strong style="font-size:.88rem">BSCScan Verification</strong>
-          <div style="margin-top:12px">
-            <div class="verify-param-row">
-              <span class="verify-param-label">Compiler</span>
-              <span class="verify-param-value">v0.8.20+commit.a1b19e3</span>
-            </div>
-            <div class="verify-param-row">
-              <span class="verify-param-label">Optimization</span>
-              <span class="verify-param-value">Enabled — 200 runs</span>
-            </div>
-            <div class="verify-param-row">
-              <span class="verify-param-label">viaIR</span>
-              <span class="verify-param-value">true</span>
-            </div>
-            <div class="verify-param-row">
-              <span class="verify-param-label">EVM Version</span>
-              <span class="verify-param-value">paris</span>
-            </div>
-            <div class="verify-param-row">
-              <span class="verify-param-label">Method</span>
-              <span class="verify-param-value">Standard-Json-Input</span>
-            </div>
-          </div>
-          <div class="verify-btn-row">
-            <button class="verify-btn primary" id="btn-dl-verify" onclick="downloadVerifyJson()">↓ Download verify JSON</button>
-            <a class="verify-btn" id="btn-open-bscscan" href="#" target="_blank">Open BSCScan →</a>
-          </div>
-          <p class="verify-note">Upload the JSON file at BSCScan → Verify Contract → Standard-Json-Input</p>
-        </div>
       </div>
     </div>
     <div class="modal-btns" id="modal-btns">
@@ -1234,10 +1186,8 @@ async function deployToken(){
     document.getElementById('contract-addr-text').textContent = deployedContract;
     var bscscanBase = isTestnet ? 'https://testnet.bscscan.com' : 'https://bscscan.com';
     document.getElementById('btn-bscscan').href = bscscanBase+'/address/'+deployedContract+'#code';
-    document.getElementById('btn-open-bscscan').href = bscscanBase+'/verifyContract?a='+deployedContract;
     document.getElementById('btn-copy').style.display = 'inline-flex';
     document.getElementById('btn-bscscan').style.display = 'inline-flex';
-    document.getElementById('verify-section').style.display = 'block';
     setStep(4);
 
   } catch(e){
@@ -1260,15 +1210,6 @@ function copyAddr(){
   });
 }
 
-/* ─── VERIFY JSON ─── */
-function downloadVerifyJson(){
-  var data = JSON.stringify(window.__VERIFY_JSON__ || { error: 'verify_standard_input.json not found' }, null, 2);
-  var blob = new Blob([data], {type:'application/json'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a'); a.href=url; a.download='verify_standard_input.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
 /* ─── ADMIN ─── */
 function openAdminPanelByAddress(){
   var addr = prompt((currentLang==='zh'?'输入要管理的合约地址:':'Enter contract address to manage:'));
@@ -1277,7 +1218,6 @@ function openAdminPanelByAddress(){
 
 /* ─── INIT ─── */
 window.addEventListener('load', function(){
-  fetch('verify_standard_input.json').then(function(r){ return r.json(); }).then(function(d){ window.__VERIFY_JSON__=d; }).catch(function(){});
   updateAlloc();
   document.getElementById('buyTax').dispatchEvent(new Event('input'));
   document.getElementById('sellTax').dispatchEvent(new Event('input'));
