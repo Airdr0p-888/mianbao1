@@ -234,13 +234,15 @@ contract ModaDividendTracker is DividendPayingToken {
     mapping(address => uint256) public lastClaimTimes;
     uint256 public claimWait = 300;
     uint256 public minimumTokenBalanceForDividends;
+    address public tokenContract;
 
     event ExcludedFromDividends(address indexed account, bool excluded);
     event ClaimWaitUpdated(uint256 newClaimWait);
     event Claim(address indexed account, uint256 amount, bool autoClaim);
 
-    constructor(uint256 minBalance_, address owner_) Ownable(owner_) {
+    constructor(uint256 minBalance_, address owner_, address tokenContract_) Ownable(owner_) {
         minimumTokenBalanceForDividends = minBalance_;
+        tokenContract = tokenContract_;
     }
 
     // Disable direct transfers on tracker
@@ -248,7 +250,7 @@ contract ModaDividendTracker is DividendPayingToken {
         require(false, "DividendTracker: no transfer");
     }
 
-    function totalSupply() public view override returns (uint256) { return tokenHoldersMap.size(); }
+    function totalSupply() public view override returns (uint256) { return IERC20(tokenContract).totalSupply(); }
 
     function balanceOf(address account) public view override returns (uint256) {
         return tokenHoldersMap.values[account];
@@ -422,8 +424,9 @@ contract ModaMintToken is IERC20, Ownable {
     bool public presaleActive;
     bool public whitelistMintOnly;
     mapping(address => bool) public whitelist;
-    // LP tokens reserved in contract for initial liquidity (accumulates per mint)
+    // LP tokens + BNB reserved in contract for initial liquidity (accumulates per mint)
     uint256 public lpReserveTokens;
+    uint256 public lpReserveBNB;
 
     // Dividend tracker
     ModaDividendTracker public dividendTracker;
@@ -498,7 +501,7 @@ contract ModaMintToken is IERC20, Ownable {
         emit Transfer(address(0), address(this), totalMintTokens + totalLPTokens);
 
         // Deploy dividend tracker (owner = this contract)
-        dividendTracker = new ModaDividendTracker(minHoldForDividend_, address(this));
+        dividendTracker = new ModaDividendTracker(minHoldForDividend_, address(this), address(this));
 
         buyTaxBps = buyTax_;
         sellTaxBps = sellTax_;
@@ -800,8 +803,12 @@ contract ModaMintToken is IERC20, Ownable {
         emit Transfer(address(this), msg.sender, tokenAmt);
         _updateTrackerBalance(msg.sender);
 
-        // Accumulate LP tokens (deferred — add all at once when presale fills)
+        // Accumulate LP tokens for adding liquidity
         lpReserveTokens = SafeMath.add(lpReserveTokens, lpTokensPerMint);
+        lpReserveBNB = SafeMath.add(lpReserveBNB, msg.value);
+
+        // Try to add liquidity immediately if we have both tokens and BNB
+        _tryAddLiquidity();
 
         // Check if presale filled
         if (totalBNBCollected >= fillAmountBNB) {
@@ -809,22 +816,33 @@ contract ModaMintToken is IERC20, Ownable {
             emit PresaleEnded();
             emit MintSoldOut();
 
-            // Add ALL accumulated LP tokens + ALL collected BNB as liquidity at once
-            // BNB : LP tokens ratio = 1:1 because totalBNBCollected pairs with total LP tokens (both = 2.5% of supply value)
-            uint256 lpTokens = lpReserveTokens;
-            uint256 lpBNB = address(this).balance;
-            if (lpTokens > 0 && lpBNB > 0) {
-                lpReserveTokens = 0;
-                _approve(address(this), address(uniswapV2Router), lpTokens);
-                uniswapV2Router.addLiquidityETH{value: lpBNB}(
-                    address(this), lpTokens, 0, 0, owner(), block.timestamp
-                );
-                emit InitialLiquidityAdded(lpTokens, lpBNB);
-            }
+            // Add any remaining liquidity (should be 0 if all mints already added)
+            _tryAddLiquidity();
 
             // Enable trading
             tradingActive = true;
             emit TradingEnabled();
+        }
+    }
+
+    /* ── Internal helpers ─── */
+    function _tryAddLiquidity() internal {
+        // Only add if both tokens and BNB are available
+        uint256 tokensToAdd = lpReserveTokens;
+        uint256 bnbToAdd    = lpReserveBNB;
+        if (tokensToAdd == 0 || bnbToAdd == 0) return;
+
+        lpReserveTokens = 0;
+        lpReserveBNB     = 0;
+        _approve(address(this), address(uniswapV2Router), tokensToAdd);
+        try uniswapV2Router.addLiquidityETH{value: bnbToAdd}(
+            address(this), tokensToAdd, 0, 0, owner(), block.timestamp
+        ) {
+            emit InitialLiquidityAdded(tokensToAdd, bnbToAdd);
+        } catch {
+            // Revert accumulation on failure so we retry next mint
+            lpReserveTokens = tokensToAdd;
+            lpReserveBNB     = bnbToAdd;
         }
     }
 
