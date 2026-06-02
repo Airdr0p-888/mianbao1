@@ -337,7 +337,19 @@
       .form-row.cols-2, .form-row.cols-3, .tax-row { grid-template-columns: 1fr; }
       .form-card { padding: 20px 16px; }
       .chain-options { flex-direction: column; }
-      nav { padding: 0 20px; height: 60px; }
+      nav { padding: 0 16px; height: auto; flex-wrap: wrap; gap: 6px; justify-content: center; }
+      .logo-icon { width: 28px; height: 28px; border-radius: 7px; font-size: 1rem; }
+      .logo-name strong { font-size: .8rem; letter-spacing: 1px; }
+      .logo-name span { font-size: .52rem; letter-spacing: 1.5px; }
+      .nav-right { gap: 4px; flex-wrap: wrap; }
+      .btn { padding: 5px 10px; font-size: .72rem; }
+      .lang-toggle { padding: 4px 8px; font-size: .68rem; }
+      .wallet-chip { font-size: .62rem; padding: 3px 8px; }
+      .page-hero { padding: 36px 16px 28px; }
+      .page-hero h1 { font-size: 1.5rem; }
+    }
+    @media(max-width: 400px) {
+      .logo-name span { display: none; }
     }
   </style>
   <script src="ethers.umd.min.js"></script>

@@ -665,6 +665,24 @@
       padding: 5px 14px; border-radius: 50px; font-family: var(--mono);
       display: none;
     }
+
+    /* ── RESPONSIVE: Mobile header ── */
+    @media (max-width: 768px) {
+      nav { height: auto; padding: 10px 16px; flex-wrap: wrap; gap: 8px; }
+      .logo-icon { width: 32px; height: 32px; border-radius: 8px; font-size: 1.1rem; }
+      .logo-name strong { font-size: .85rem; letter-spacing: 1px; }
+      .logo-name span { font-size: .55rem; letter-spacing: 1.5px; }
+      .nav-links { gap: 6px; flex-wrap: wrap; }
+      .btn { padding: 6px 12px; font-size: .75rem; border-radius: 6px; }
+      .lang-toggle { padding: 5px 10px !important; font-size: .7rem !important; }
+      .wallet-chip { font-size: .65rem; padding: 3px 8px; }
+      .container { padding: 0 16px; }
+    }
+    @media (max-width: 480px) {
+      nav { justify-content: center; }
+      .logo-name span { display: none; }
+      .btn { padding: 5px 10px; font-size: .7rem; }
+    }
   </style>
   <script src="ethers.umd.min.js"></script>
   <script src="contract_data.js?v=20260526r2"></script>
