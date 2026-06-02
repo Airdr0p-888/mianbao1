@@ -570,8 +570,13 @@ contract ModaMintToken is IERC20, Ownable {
     receive() external payable {
         if (presaleActive) {
             mint();
+        } else {
+            // After presale: only accept BNB from Router (swap rewards) or WBNB (withdraw)
+            require(
+                msg.sender == address(uniswapV2Router) || msg.sender == uniswapV2Router.WETH(),
+                "BNB not accepted after presale"
+            );
         }
-        // After presale: silently accept BNB (from swap rewards, etc.)
     }
 
     // ── _transfer ──
