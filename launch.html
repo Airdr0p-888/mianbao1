@@ -343,10 +343,10 @@
   <script src="ethers.umd.min.js"></script>
   <script src="contract_data.js?v=20260601r5"></script>
   <script>
-    // v20260602r2: removed BSCScan verify section from deploy modal
+    // v20260602r3: tax distribution refactor (liquidity fix, setMarketingBps fix, constructor relaxed)
     if(typeof CONTRACT_DATA !== 'undefined' && typeof CONTRACT_DATA.BYTECODE === 'string'){
       var bcLen = CONTRACT_DATA.BYTECODE.length;
-      if(Math.abs(bcLen - 39164) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 39164'); }
+      if(Math.abs(bcLen - 38996) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 38996'); }
       else { console.log('[Version check] ✅ Correct bytecode (' + bcLen + ')'); }
     }
   </script>
