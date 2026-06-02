@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>管理员 — BREAD LAUNCH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;
+  --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);
+  --gold:#f5c842;--gold2:#e8a020;--amber:#ff8c00;--cream:#fef3c7;
+  --text:#f0ede8;--muted:#888;--muted2:#666;
+  --red:#ef4444;--green:#22c55e;
+  --radius:12px;
+  --font:'Space Grotesk',system-ui,sans-serif;
+  --mono:'Space Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--font);
+  line-height:1.6;overflow-x:hidden;min-height:100vh
+}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.4}
+.container{max-width:960px;margin:0 auto;padding:40px 24px;position:relative;z-index:1}
+.header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:32px}
+.header h1{font-size:1.6rem;font-weight:700;letter-spacing:-.02em}
+.header h1 span{color:var(--gold)}
+.badge{font-size:.7rem;padding:4px 10px;border-radius:20px;background:var(--red);color:#fff;font-weight:600}
+.badge.ok{background:var(--green)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px}
+.card h3{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;font-weight:500}
+input,select,textarea{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  border-radius:8px;padding:10px 14px;font-family:var(--font);font-size:.9rem;
+  width:100%;transition:border-color .2s
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+input[type="number"]{font-family:var(--mono)}
+::placeholder{color:var(--muted2)}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:10px 20px;border-radius:8px;font-family:var(--font);
+  font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s;
+  border:1px solid var(--border2);background:var(--bg3);color:var(--text)
+}
+.btn:hover{background:var(--bg4)}
+.btn.primary{background:var(--gold);color:#000;border-color:var(--gold)}
+.btn.primary:hover{background:var(--gold2)}
+.btn.danger{background:transparent;color:var(--red);border-color:var(--red)}
+.btn.danger:hover{background:var(--red);color:#fff}
+.btn.sm{padding:6px 14px;font-size:.78rem}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-label{color:var(--muted);font-size:.82rem}
+.info-val{font-family:var(--mono);font-size:.82rem;word-break:break-all;text-align:right}
+.info-val.gold{color:var(--gold)}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-hint{font-size:.72rem;color:var(--muted2);margin-top:4px}
+.tabs{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap}
+.tab{
+  padding:8px 16px;border-radius:8px;font-size:.8rem;cursor:pointer;
+  background:var(--bg3);border:1px solid var(--border);color:var(--muted);
+  transition:all .2s;font-family:var(--font)
+}
+.tab:hover{color:var(--text);border-color:var(--border2)}
+.tab.active{background:var(--gold);color:#000;border-color:var(--gold)}
+.toast{position:fixed;bottom:24px;right:24px;z-index:100;padding:12px 20px;border-radius:8px;font-size:.85rem;font-weight:600;animation:slideIn .3s ease}
+.toast.ok{background:var(--green);color:#000}
+.toast.err{background:var(--red);color:#fff}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--gold);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+.addr-input{display:flex;gap:8px}
+.addr-input input{font-family:var(--mono)}
+.section-title{font-size:.9rem;font-weight:600;color:var(--gold);margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>BREAD <span>管理员</span></h1>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="wallet-chip" style="font-family:var(--mono);font-size:.82rem;color:var(--muted);display:none"></span>
+      <button class="btn" id="btn-connect" onclick="connectWallet()">连接钱包</button>
+      <span class="badge hidden" id="admin-badge">管理员</span>
+    </div>
+  </div>
+
+  <div class="card" id="card-load">
+    <h3>加载合约</h3>
+    <div class="addr-input">
+      <input type="text" id="contract-addr" placeholder="0x... 合约地址" style="font-family:var(--mono)"/>
+      <button class="btn primary" id="btn-load" onclick="loadContract()">加载</button>
+    </div>
+    <div class="form-hint" style="margin-top:8px">输入已部署的 ModaMintToken 合约地址进行管理。</div>
+  </div>
+
+  <div class="card hidden" id="card-info">
+    <h3>合约信息</h3>
+    <div id="info-panel"></div>
+  </div>
+
+  <div class="card hidden" id="card-actions">
+    <h3>管理员操作</h3>
+    <div id="owner-status"></div>
+    <div class="tabs" id="action-tabs">
+      <div class="tab active" onclick="switchTab('tax')">税率</div>
+      <div class="tab" onclick="switchTab('manage')">管理</div>
+      <div class="tab" onclick="switchTab('trading')">交易</div>
+      <div class="tab" onclick="switchTab('dividend')">分红</div>
+      <div class="tab" onclick="switchTab('liquidity')">流动性</div>
+      <div class="tab" onclick="switchTab('ownership')">所有权</div>
+      <div class="tab" onclick="switchTab('emergency')">紧急</div>
+    </div>
+    <div id="tab-content"></div>
+  </div>
+</div>
+
+<script src="ethers.umd.min.js"></script>
+<script src="contract_data.js?v=20260601r5"></script>
+<script>
+/* ─── 配置 ─── */
+var ADMIN_WALLET = '0xF11fF8Db8DC0bd36B82154Af94A9f77d53fee8ee';
+var BSC_RPC = 'https://bsc-dataseed1.binance.org/';
+var BSC_CHAIN = {chainId:'0x38',chainName:'BNB Smart Chain',rpcUrls:['https://bsc-dataseed.binance.org/'],nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},blockExplorerUrls:['https://bscscan.com/']};
+
+var provider = null, signer = null, account = '', contract = null;
+var currentTab = 'tax';
+
+/* ─── 钱包 ─── */
+function getWP(){ return (window.tokenpocket&&window.tokenpocket.isTokenPocket)?window.tokenpocket:window.ethereum||null; }
+
+async function connectWallet(){
+  var wp = getWP();
+  if(!wp){ alert('未检测到钱包，请安装 MetaMask 或 TokenPocket。'); return; }
+  try {
+    try { await wp.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x38'}]}); }
+    catch(e){ if(e.code===4902) await wp.request({method:'wallet_addEthereumChain',params:[BSC_CHAIN]}); else throw e; }
+    var accts = await wp.request({method:'eth_requestAccounts'});
+    account = accts[0];
+    provider = new ethers.providers.Web3Provider(wp);
+    signer = provider.getSigner();
+    var chip = document.getElementById('wallet-chip');
+    chip.textContent = account.slice(0,6)+'…'+account.slice(-4);
+    chip.style.display = 'inline';
+    document.getElementById('btn-connect').textContent = '已连接 ✓';
+    document.getElementById('btn-connect').style.borderColor = 'rgba(245,200,66,.4)';
+    document.getElementById('btn-connect').style.color = 'var(--gold)';
+    var badge = document.getElementById('admin-badge');
+    if(account.toLowerCase() === ADMIN_WALLET.toLowerCase()){
+      badge.classList.remove('hidden'); badge.classList.add('ok'); badge.textContent = '管理员';
+    } else {
+      badge.classList.remove('hidden','ok'); badge.textContent = '非管理员';
+    }
+    wp.on('accountsChanged',function(a){ if(!a.length) location.reload(); else { account=a[0]; chip.textContent=account.slice(0,6)+'…'+account.slice(-4); } });
+    wp.on('chainChanged',function(){ location.reload(); });
+  } catch(e){ alert('连接失败: '+(e.reason||e.message)); }
+}
+
+/* ─── 加载合约 ─── */
+async function loadContract(){
+  if(!signer){ alert('请先连接钱包。'); return; }
+  var addr = document.getElementById('contract-addr').value.trim();
+  if(!ethers.utils.isAddress(addr)){ alert('无效地址'); return; }
+  try {
+    contract = new ethers.Contract(addr, CONTRACT_DATA.ABI, signer);
+    await refreshInfo();
+    document.getElementById('card-info').classList.remove('hidden');
+    document.getElementById('card-actions').classList.remove('hidden');
+    renderActions();
+  } catch(e){ alert('加载合约失败: '+(e.reason||e.message)); }
+}
+
+/* ─── 刷新信息 ─── */
+async function refreshInfo(){
+  if(!contract) return;
+  try {
+    var [name,symbol,totalSupply,owner,marketingWallet,buyTax,sellTax,
+         mktBps,burnBps,divBps,liqBps,tradingActive,presaleActive,
+         wlOnly,mintCost,fillBNB,tokensPerMint,lpPct,
+         divThreshold,minHoldDiv,pair,router,decimals] =
+      await Promise.all([
+        contract.name(),contract.symbol(),contract.totalSupply(),
+        contract.owner(),contract.marketingWallet(),contract.buyTaxBps(),contract.sellTaxBps(),
+        contract.marketingBps(),contract.burnBps(),contract.dividendBps(),contract.liquidityBps(),
+        contract.tradingActive(),contract.presaleActive(),
+        contract.whitelistMintOnly(),contract.mintCostBNB(),contract.fillAmountBNB(),
+        contract.tokensPerMint(),contract.lpTokenPct(),
+        contract.dividendSwapThreshold(),contract.minHoldForDividend().catch(function(){return 0n;}),
+        contract.uniswapV2Pair(),contract.uniswapV2Router(),
+        contract.decimals()
+      ]);
+
+    var supplyFormatted = ethers.utils.formatUnits(totalSupply, decimals);
+    var isOwner = account.toLowerCase() === owner.toLowerCase();
+
+    var html = '';
+    html += infoRow('名称', name);
+    html += infoRow('符号', symbol);
+    html += infoRow('精度', decimals.toString());
+    html += infoRow('总供应量', Number(supplyFormatted).toLocaleString());
+    html += infoRow('所有者', owner, isOwner);
+    html += infoRow('营销钱包', marketingWallet);
+    html += infoRow('买入税', (buyTax/100).toFixed(2)+'%');
+    html += infoRow('卖出税', (sellTax/100).toFixed(2)+'%');
+    html += infoRow('税率分配', '营销:'+(mktBps/100).toFixed(0)+'% 销毁:'+(burnBps/100).toFixed(0)+'% 分红:'+(divBps/100).toFixed(0)+'% 流动性:'+(liqBps/100).toFixed(0)+'%');
+    html += infoRow('交易状态', tradingActive?'✅ 已启用':'❌ 未启用');
+    html += infoRow('预售状态', presaleActive?'✅ 进行中':'❌ 已结束');
+    html += infoRow('仅白名单', wlOnly?'✅ 是':'❌ 否');
+    html += infoRow('Mint 价格', ethers.utils.formatEther(mintCost)+' BNB');
+    html += infoRow('募资目标', ethers.utils.formatEther(fillBNB)+' BNB');
+    html += infoRow('每笔Mint量', ethers.utils.formatUnits(tokensPerMint, decimals));
+    html += infoRow('LP比例', lpPct.toString()+'%');
+    html += infoRow('分红兑换阈值', ethers.utils.formatEther(divThreshold)+' 代币');
+    html += infoRow('分红最低持有', ethers.utils.formatEther(minHoldDiv||0)+' 代币');
+    html += infoRow('交易对', pair);
+    html += infoRow('路由', router);
+    document.getElementById('info-panel').innerHTML = html;
+
+    var os = document.getElementById('owner-status');
+    if(isOwner){
+      os.innerHTML = '<div style="color:var(--green);font-size:.85rem;margin-bottom:12px">✅ 你是该合约的所有者，可以执行管理操作。</div>';
+    } else {
+      os.innerHTML = '<div style="color:var(--red);font-size:.85rem;margin-bottom:12px">❌ 你不是该合约的所有者，操作将失败。</div>';
+    }
+
+    window._cdata = {name,symbol,totalSupply,owner,marketingWallet,buyTax,sellTax,mktBps,burnBps,divBps,liqBps,tradingActive,presaleActive,wlOnly,mintCost,fillBNB,tokensPerMint,lpPct,divThreshold,minHoldDiv,pair,router,decimals};
+  } catch(e){ console.error(e); alert('获取信息失败: '+(e.reason||e.message)); }
+}
+
+function infoRow(label, value, highlight){
+  var cls = highlight ? 'gold' : '';
+  return '<div class="info-row"><span class="info-label">'+label+'</span><span class="info-val '+cls+'">'+value+'</span></div>';
+}
+
+/* ─── 标签页 ─── */
+function switchTab(tab){ currentTab = tab; document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.textContent.trim().toLowerCase().startsWith(tab)); }); renderActions(); }
+
+function renderActions(){
+  var html = '';
+  var d = window._cdata || {};
+  switch(currentTab){
+    case 'tax':
+      html += '<div class="section-title">设置税率（基点，1% = 100）</div>';
+      html += actionForm('setBuyTax', '买入税 (bps)', d.buyTax?d.buyTax.toString():'500', 'number');
+      html += actionForm('setSellTax', '卖出税 (bps)', d.sellTax?d.sellTax.toString():'500', 'number');
+      html += '<div class="section-title">设置分配比例（基点，总和必须为 10000）</div>';
+      html += actionForm('setMarketingBps', '营销 (bps)', d.mktBps?d.mktBps.toString():'3000', 'number');
+      html += actionForm('setBurnBps', '销毁 (bps)', d.burnBps?d.burnBps.toString():'2000', 'number');
+      html += actionForm('setDividendBps', '分红 (bps)', d.divBps?d.divBps.toString():'3000', 'number');
+      html += actionForm('setLiquidityBps', '流动性 (bps)', d.liqBps?d.liqBps.toString():'2000', 'number');
+      break;
+    case 'manage':
+      html += '<div class="section-title">营销钱包</div>';
+      html += actionForm('setMarketingWallet', '钱包地址', d.marketingWallet||'', 'text');
+      html += '<div class="section-title">免税设置</div>';
+      html += actionFormAddrBool('excludeFromTax', '地址', '添加免税', '移除');
+      html += '<div class="section-title">白名单</div>';
+      html += actionFormMultiAddr('addWhitelist', '添加地址（逗号分隔）');
+      html += actionFormMultiAddr('removeWhitelist', '移除地址（逗号分隔）');
+      html += '<div class="section-title">白名单模式</div>';
+      html += actionFormBool('setWhitelistMintOnly', '仅白名单可Mint', d.wlOnly);
+      break;
+    case 'trading':
+      html += '<div class="section-title">交易开关</div>';
+      html += '<button class="btn primary" onclick="callWrite(\'enableTrading\',[])">启用交易</button>';
+      html += '<div class="section-title" style="margin-top:20px">Mint 价格</div>';
+      html += actionForm2('setMintPrice', 'Mint 费用 (BNB)', d.mintCost?ethers.utils.formatEther(d.mintCost):'0.01', '募资目标 (BNB)', d.fillBNB?ethers.utils.formatEther(d.fillBNB):'1');
+      break;
+    case 'dividend':
+      html += '<div class="section-title">分红设置</div>';
+      html += actionForm('setDividendSwapThreshold', '兑换阈值（代币）', d.divThreshold?ethers.utils.formatEther(d.divThreshold):'10000', 'number');
+      html += actionForm('setMinHoldForDividend', '最低持有（代币）', d.minHoldDiv?ethers.utils.formatEther(d.minHoldDiv):'0', 'number');
+      html += actionForm('setDividendClaimWait', '领取等待时间（秒）', '3600', 'number');
+      html += '<div class="section-title">分红排除</div>';
+      html += actionFormAddrBool('excludeFromDividend', '地址', '排除', '取消排除');
+      html += '<div class="section-title">触发分红</div>';
+      html += actionForm('triggerDividendProcess', 'Gas 上限', '500000', 'number');
+      html += '<div class="section-title">紧急提款</div>';
+      html += '<button class="btn danger" onclick="callWrite(\'dividendTrackerEmergencyWithdrawBNB\',[])">从分红追踪器紧急提取 BNB</button>';
+      break;
+    case 'liquidity':
+      html += '<div class="section-title">流动性</div>';
+      html += '<button class="btn primary" onclick="callWrite(\'addLiquidity\',[])">添加流动性</button>';
+      html += '<div class="section-title" style="margin-top:20px">提取</div>';
+      html += '<button class="btn danger" onclick="callWrite(\'withdrawBNB\',[])">提取全部 BNB</button>';
+      break;
+    case 'ownership':
+      html += '<div class="section-title">转移所有权</div>';
+      html += actionForm('transferOwnership', '新所有者地址', '', 'text');
+      html += '<div class="section-title" style="margin-top:20px">放弃所有权</div>';
+      html += '<button class="btn danger" onclick="if(confirm(\'⚠️ 不可逆操作！确定要放弃所有权吗？此操作无法撤销。\'))callWrite(\'renounceOwnership\',[])">放弃所有权</button>';
+      break;
+    case 'emergency':
+      html += '<div class="section-title">紧急提取代币</div>';
+      html += '<div class="form-group"><label class="form-label">代币地址</label><input type="text" id="arg0-emergencyWithdrawToken" placeholder="0x..."/></div>';
+      html += '<div class="form-group"><label class="form-label">数量（原始单位）</label><input type="text" id="arg1-emergencyWithdrawToken" placeholder="1000000000000000000"/></div>';
+      html += '<button class="btn danger" onclick="callWrite2(\'emergencyWithdrawToken\',[\'arg0\',\'arg1\'])">提取代币</button>';
+      break;
+  }
+  document.getElementById('tab-content').innerHTML = html;
+}
+
+/* ─── 表单辅助函数 ─── */
+function actionForm(fn, label, placeholder, type){
+  return '<div class="form-group"><label class="form-label">'+label+'</label><div style="display:flex;gap:8px"><input type="'+type+'" id="arg0-'+fn+'" placeholder="'+placeholder+'"/><button class="btn primary sm" onclick="callWrite1(\''+fn+'\',\'arg0\')">设置</button></div></div>';
+}
+function actionForm2(fn, label1, ph1, label2, ph2){
+  return '<div class="form-row"><div class="form-group"><label class="form-label">'+label1+'</label><input type="text" id="arg0-'+fn+'" placeholder="'+ph1+'"/></div><div class="form-group"><label class="form-label">'+label2+'</label><input type="text" id="arg1-'+fn+'" placeholder="'+ph2+'"/></div></div><button class="btn primary sm" style="margin-bottom:12px" onclick="callWrite2(\''+fn+'\',[\'arg0\',\'arg1\'])">设置</button>';
+}
+function actionFormAddrBool(fn, label, btnTrue, btnFalse){
+  return '<div class="form-group"><label class="form-label">'+label+'</label><div style="display:flex;gap:8px"><input type="text" id="arg0-'+fn+'" placeholder="0x..."/><select id="arg1-'+fn+'" style="width:auto"><option value="true">'+btnTrue+'</option><option value="false">'+btnFalse+'</option></select><button class="btn primary sm" onclick="callWrite2(\''+fn+'\',[\'arg0\',\'arg1\'])">执行</button></div></div>';
+}
+function actionFormMultiAddr(fn, label){
+  return '<div class="form-group"><label class="form-label">'+label+'</label><div style="display:flex;gap:8px"><input type="text" id="arg0-'+fn+'" placeholder="0xAAA...,0xBBB..."/><button class="btn primary sm" onclick="callWrite1Arr(\''+fn+'\',\'arg0\')">执行</button></div></div>';
+}
+function actionFormBool(fn, label, current){
+  return '<div class="form-group"><label class="form-label">'+label+'</label><div style="display:flex;gap:8px"><select id="arg0-'+fn+'" style="width:auto"><option value="true"'+(current?' selected':'')+'>启用</option><option value="false"'+(current?'':' selected')+'>禁用</option></select><button class="btn primary sm" onclick="callWrite1(\''+fn+'\',\'arg0\')">设置</button></div></div>';
+}
+
+/* ─── 写操作 ─── */
+function getArg(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+function parseArg(val, type){
+  if(type==='bool') return val==='true';
+  if(type.startsWith('uint')||type.startsWith('int')){
+    if(val.includes('.')) return ethers.utils.parseEther(val);
+    return ethers.BigNumber.from(val||'0');
+  }
+  if(type==='address') return val;
+  if(type==='bytes32') return val;
+  return val;
+}
+
+async function callWrite(fn, args){
+  if(!contract){ alert('请先加载合约。'); return; }
+  if(!confirm('确认执行 ' + fn + '？')) return;
+  showToast('正在发送 ' + fn + '...', '');
+  try {
+    var tx = await contract[fn](...args);
+    showToast('等待确认中...', '');
+    await tx.wait(1);
+    showToast('✅ ' + fn + ' 执行成功！', 'ok');
+    await refreshInfo();
+  } catch(e){ showToast('❌ ' + fn + ' 失败: ' + (e.reason||e.message), 'err'); }
+}
+
+async function callWrite1(fn, argId){
+  var val = getArg(argId+'-'+fn);
+  if(!val){ alert('请填写参数。'); return; }
+  var abiEntry = CONTRACT_DATA.ABI.find(function(a){ return a.name===fn && a.type==='function'; });
+  if(!abiEntry){ alert('ABI 中未找到该函数。'); return; }
+  var inputType = abiEntry.inputs[0].type;
+  var parsed = parseArg(val, inputType);
+  await callWrite(fn, [parsed]);
+}
+
+async function callWrite2(fn, argIds){
+  var vals = [];
+  var abiEntry = CONTRACT_DATA.ABI.find(function(a){ return a.name===fn && a.type==='function'; });
+  if(!abiEntry){ alert('ABI 中未找到该函数。'); return; }
+  for(var i=0; i<argIds.length; i++){
+    var val = getArg(argIds[i]+'-'+fn);
+    if(!val){ alert('请填写所有参数。'); return; }
+    vals.push(parseArg(val, abiEntry.inputs[i].type));
+  }
+  await callWrite(fn, vals);
+}
+
+async function callWrite1Arr(fn, argId){
+  var raw = getArg(argId+'-'+fn);
+  if(!raw){ alert('请输入地址。'); return; }
+  var addrs = raw.split(',').map(function(a){ return a.trim(); }).filter(function(a){ return ethers.utils.isAddress(a); });
+  if(!addrs.length){ alert('没有有效的地址。'); return; }
+  await callWrite(fn, [addrs]);
+}
+
+/* ─── 提示 ─── */
+function showToast(msg, type){
+  var existing = document.querySelector('.toast');
+  if(existing) existing.remove();
+  var t = document.createElement('div');
+  t.className = 'toast '+(type||'');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  if(type) setTimeout(function(){ t.remove(); }, 4000);
+}
+</script>
+</body>
+</html>

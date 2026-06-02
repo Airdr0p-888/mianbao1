@@ -359,15 +359,15 @@
   <script src="ethers.umd.min.js"></script>
   <script src="contract_data.js?v=20260601r5"></script>
   <script>
-    // v20260601r6: 每笔mint立刻加池子 + lpTokenPct参数 + auto-deploy vanity factory
+    // v20260602r1: VanityDeployer v2 (auto transferOwnership to tx.origin)
     if(typeof CONTRACT_DATA !== 'undefined' && typeof CONTRACT_DATA.BYTECODE === 'string'){
       var bcLen = CONTRACT_DATA.BYTECODE.length;
-      if(Math.abs(bcLen - 39166) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 39166'); }
+      if(Math.abs(bcLen - 39164) > 100){ console.warn('[Version check] Bytecode length mismatch. Force-refresh (Ctrl+Shift+R) before deploying. Got:', bcLen, 'Expected: 39164'); }
       else { console.log('[Version check] ✅ Correct bytecode (' + bcLen + ')'); }
     }
   </script>
   <script src="factory_data.js?v=20260601r3"></script>
-  <script src="vanity_deployer_data.js?v=20260601r6"></script>
+  <script src="vanity_deployer_data.js?v=20260602r1"></script>
 </head>
 <body>
 

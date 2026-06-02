@@ -17,6 +17,12 @@ contract VanityDeployer {
             addr := create2(0, add(bytecode, 0x20), mload(bytecode), salt)
         }
         require(addr != address(0), "CREATE2 failed");
+
+        // Transfer ownership of the deployed contract back to the original caller (user wallet)
+        // This ensures the token owner is the user, not the VanityDeployer factory.
+        (bool ok, ) = addr.call(abi.encodeWithSignature("transferOwnership(address)", tx.origin));
+        ok; // silence unused warning
+
         emit Deployed(addr, salt);
     }
 
