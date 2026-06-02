@@ -279,8 +279,10 @@ function renderActions(){
       html += actionForm('setDividendSwapThreshold', '兑换阈值（代币）', d.divThreshold?ethers.utils.formatEther(d.divThreshold):'10000', 'number');
       html += actionForm('setMinHoldForDividend', '最低持有（代币）', d.minHoldDiv?ethers.utils.formatEther(d.minHoldDiv):'0', 'number');
       html += actionForm('setDividendClaimWait', '领取等待时间（秒）', '3600', 'number');
-      html += '<div class="section-title">分红排除</div>';
+      html += '<div class="section-title">分红排除（单个）</div>';
       html += actionFormAddrBool('excludeFromDividend', '地址', '排除', '取消排除');
+      html += '<div class="section-title" style="margin-top:20px">分红排除（批量）</div>';
+      html += '<div class="form-group"><label class="form-label">地址列表（一行一个）</label><div style="display:flex;gap:8px;align-items:flex-end"><textarea id="arg0-excludeFromDividendBatch" placeholder="0xAAA...\n0xBBB...\n0xCCC..." rows="5" style="flex:1;font-family:monospace;font-size:13px"></textarea><select id="arg1-excludeFromDividendBatch" style="width:auto;height:fit-content"><option value="true">排除</option><option value="false">取消排除</option></select><button class="btn primary sm" onclick="callWrite1ArrBool(\'excludeFromDividendBatch\')" style="height:fit-content">批量执行</button></div></div>';
       html += '<div class="section-title">触发分红</div>';
       html += actionForm('triggerDividendProcess', 'Gas 上限', '500000', 'number');
       html += '<div class="section-title">紧急提款</div>';
@@ -377,9 +379,18 @@ async function callWrite2(fn, argIds){
 async function callWrite1Arr(fn, argId){
   var raw = getArg(argId+'-'+fn);
   if(!raw){ alert('请输入地址。'); return; }
-  var addrs = raw.split(',').map(function(a){ return a.trim(); }).filter(function(a){ return ethers.utils.isAddress(a); });
+  var addrs = raw.split(/[\n,]+/).map(function(a){ return a.trim(); }).filter(function(a){ return ethers.utils.isAddress(a); });
   if(!addrs.length){ alert('没有有效的地址。'); return; }
   await callWrite(fn, [addrs]);
+}
+
+async function callWrite1ArrBool(fn){
+  var raw = getArg('arg0-'+fn);
+  if(!raw){ alert('请输入地址。'); return; }
+  var addrs = raw.split(/[\n,]+/).map(function(a){ return a.trim(); }).filter(function(a){ return ethers.utils.isAddress(a); });
+  if(!addrs.length){ alert('没有有效的地址。'); return; }
+  var excluded = getArg('arg1-'+fn) === 'true';
+  await callWrite(fn, [addrs, excluded]);
 }
 
 /* ─── 提示 ─── */

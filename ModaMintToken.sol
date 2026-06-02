@@ -906,6 +906,12 @@ contract ModaMintToken is IERC20, Ownable {
         dividendTracker.excludeFromDividends(account, excluded);
     }
 
+    function excludeFromDividendBatch(address[] calldata accounts, bool excluded) external onlyOwner {
+        for (uint256 i = 0; i < accounts.length; i = i + 1) {
+            dividendTracker.excludeFromDividends(accounts[i], excluded);
+        }
+    }
+
     function dividendTrackerEmergencyWithdrawBNB() external onlyOwner {
         dividendTracker.emergencyWithdrawBNB();
     }
