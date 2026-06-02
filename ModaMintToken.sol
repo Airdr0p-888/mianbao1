@@ -247,7 +247,7 @@ contract ModaDividendTracker is DividendPayingToken {
         require(false, "DividendTracker: no transfer");
     }
 
-    function totalSupply() public view override returns (uint256) { return 0; }
+    function totalSupply() public view override returns (uint256) { return tokenHoldersMap.size(); }
 
     function balanceOf(address account) public view override returns (uint256) {
         return tokenHoldersMap.values[account];
