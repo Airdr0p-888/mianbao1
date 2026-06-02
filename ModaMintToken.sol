@@ -109,6 +109,9 @@ interface IUniswapV2Router02 {
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
         uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline
     ) external returns (uint[] memory amounts);
+    function swapExactTokensForETH(
+        uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline
+    ) external returns (uint[] memory amounts);
     function addLiquidityETH(
         address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin,
         address to, uint deadline
@@ -666,12 +669,24 @@ contract ModaMintToken is IERC20, Ownable {
     function _processSwap(uint256 totalAmt) internal lockTheSwap {
         if (totalAmt == 0) return;
 
-        uint256 swapBps = marketingBps + liquidityBps + dividendBps;
-        if (swapBps == 0) return;
+        uint256 totalBps = marketingBps + dividendBps + liquidityBps;
+        if (totalBps == 0) return;
 
-        // Pre-allocate liquidity tokens (keep them, don't swap)
-        uint256 liqTokens = SafeMath.mul(totalAmt, liquidityBps) / swapBps;
-        uint256 swapTokens = totalAmt - liqTokens; // tokens to swap for mkt + div
+        // ── Calculate token amounts ──
+        // marketing tokens → swap all to BNB
+        uint256 mktTokens = SafeMath.mul(totalAmt, marketingBps) / totalBps;
+        // dividend tokens → swap all to BNB
+        uint256 divTokens = SafeMath.mul(totalAmt, dividendBps) / totalBps;
+        // liquidity tokens → swap half to BNB, keep half as tokens
+        uint256 liqTokensTotal = SafeMath.mul(totalAmt, liquidityBps) / totalBps;
+        uint256 liqTokensSwap = liqTokensTotal / 2;   // swap this half for BNB
+        uint256 liqTokensKeep = liqTokensTotal - liqTokensSwap; // keep this half as tokens
+
+        // Total tokens to swap = marketing + dividend + half liquidity
+        uint256 swapTokens = mktTokens + divTokens + liqTokensSwap;
+        // BNB distribution weights (after swap): mktBps : divBps : liqHalfBps
+        uint256 mktDivLiqBps = marketingBps + dividendBps + liquidityBps / 2;
+        if (mktDivLiqBps == 0) return;
 
         if (swapTokens > 0) {
             _approve(address(this), address(uniswapV2Router), swapTokens);
@@ -682,39 +697,34 @@ contract ModaMintToken is IERC20, Ownable {
 
             uint256 bnbBefore = address(this).balance;
 
-            try uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+            try uniswapV2Router.swapExactTokensForETH(
                 swapTokens, 0, path, address(this), block.timestamp
             ) {} catch {
-                emit DividendSwapFailed(totalAmt);
+                emit DividendSwapFailed(swapTokens);
                 return;
             }
 
             uint256 bnbReceived = SafeMath.sub(address(this).balance, bnbBefore);
 
-            // Split BNB between marketing and dividend
-            uint256 mktDivBps = marketingBps + dividendBps;
-            if (mktDivBps > 0) {
-                uint256 mktBNB = SafeMath.mul(bnbReceived, marketingBps) / mktDivBps;
-                uint256 divBNB = bnbReceived - mktBNB;
+            // Split BNB: marketing, dividend, liquidity
+            uint256 mktBNB = SafeMath.mul(bnbReceived, marketingBps) / mktDivLiqBps;
+            uint256 divBNB = SafeMath.mul(bnbReceived, dividendBps) / mktDivLiqBps;
+            uint256 liqBNB = bnbReceived - mktBNB - divBNB;
 
-                if (mktBNB > 0 && marketingWallet != address(0)) {
-                    (bool ok, ) = marketingWallet.call{value: mktBNB}("");
-                    ok; // silence warning
-                }
-                if (divBNB > 0) {
-                    (bool ok, ) = address(dividendTracker).call{value: divBNB}("");
-                    if (ok) emit DividendProcessed(totalAmt, divBNB);
-                }
+            if (mktBNB > 0 && marketingWallet != address(0)) {
+                (bool ok, ) = marketingWallet.call{value: mktBNB}("");
+                ok;
             }
-        }
+            if (divBNB > 0) {
+                (bool ok, ) = address(dividendTracker).call{value: divBNB}("");
+                if (ok) emit DividendProcessed(swapTokens, divBNB);
+            }
 
-        // Add liquidity with reserved tokens + any remaining BNB
-        if (liqTokens > 0) {
-            uint256 liqBNB = address(this).balance;
-            if (liqBNB > 0) {
-                _approve(address(this), address(uniswapV2Router), liqTokens);
+            // Add liquidity: liqTokensKeep (tokens) + liqBNB
+            if (liqTokensKeep > 0 && liqBNB > 0) {
+                _approve(address(this), address(uniswapV2Router), liqTokensKeep);
                 try uniswapV2Router.addLiquidityETH{value: liqBNB}(
-                    address(this), liqTokens, 0, 0, owner(), block.timestamp
+                    address(this), liqTokensKeep, 0, 0, owner(), block.timestamp
                 ) {} catch { /* fail silently */ }
             }
         }
