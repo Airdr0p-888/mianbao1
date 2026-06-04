@@ -688,6 +688,20 @@
       .token-row .row-num, .token-row .row-progress { display: none; }
       .footer-inner { flex-direction: column; text-align: center; }
     }
+    .platform-badge {
+      display: inline-block; font-size: .6rem; font-weight: 700;
+      background: linear-gradient(90deg,#f5c842,#f59e0b);
+      color: #000; border-radius: 4px; padding: 1px 6px;
+      margin-left: 6px; letter-spacing: .5px; vertical-align: middle;
+    }
+    .token-row.platform-row {
+      border: 1px solid rgba(245,200,66,.25);
+      background: rgba(245,200,66,.04);
+    }
+    .token-row.platform-row:hover {
+      background: rgba(245,200,66,.10);
+      border-color: rgba(245,200,66,.45);
+    }
     .wallet-chip {
       font-size: .8rem; color: var(--gold);
       background: rgba(245,200,66,.08); border: 1px solid rgba(245,200,66,.2);
@@ -1339,6 +1353,7 @@ async function loadTokens(){
   if(cloud !== null){
     allTokens = cloud.map(function(t){ return {addr:t.a,name:t.n,symbol:t.s,img:t.img||'',desc:t.desc||'',links:t.links||{},wl:t.wl||0,active:false,fill:0,collected:0,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:t.t||0}; });
     allTokens.sort(function(a,b){ return b._t-a._t; });
+    allTokens.unshift({addr:'0x88032deda3f066fd708e285e473dadd008e41111',name:'BREAD',symbol:'BREAD',img:'',desc:'PANDA MINT Platform Token',links:{web:'https://pandamint.fun',twitter:'',telegram:'',discord:''},active:false,fill:2,collected:2,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:Date.now(),isPlatform:true});
     renderTokens();
     updateStats();
     syncChain();
@@ -1348,6 +1363,7 @@ async function loadTokens(){
   try {
     var addrs = await getDeployerTokens(provider, FACTORY_ADDR, DEPLOYER_WALLET);
     allTokens = [];
+    allTokens.push({addr:'0x88032deda3f066fd708e285e473dadd008e41111',name:'BREAD',symbol:'BREAD',img:'',desc:'PANDA MINT Platform Token',links:{web:'https://pandamint.fun',twitter:'',telegram:'',discord:''},active:false,fill:2,collected:2,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:Date.now(),isPlatform:true});
     for(var i=0;i<addrs.length;i++){
       try { allTokens.push(await fetchToken(addrs[i])); } catch(e){}
     }
@@ -1437,7 +1453,7 @@ function renderTokens(){
       ? '<div class="row-avatar"><img src="'+t.img+'" /></div>'
       : '<div class="row-avatar" style="background:'+c+'22;color:'+c+';border:1px solid '+c+'33">'+(t.symbol||'?').slice(0,3).toUpperCase()+'</div>';
 
-    html += '<div class="token-row" onclick="openToken(\''+t.addr+'\')" title="View on Ave.ai">';
+    html += '<div class="token-row'+(t.isPlatform?' platform-row':'')+'" onclick="openToken(\''+t.addr+'\')" title="View on Ave.ai">';
 
     if(isAdmin()){
       html += '<div style="display:flex;align-items:center;gap:6px"><span class="row-num">'+(i+1)+'</span><button class="edit-btn" onclick="event.stopPropagation();editToken(\''+t.addr+'\')">✎</button><button class="del-btn" onclick="event.stopPropagation();deleteToken(\''+t.addr+'\')">✕</button></div>';
@@ -1445,7 +1461,7 @@ function renderTokens(){
       html += '<div class="row-num">'+(i+1)+'</div>';
     }
 
-    html += '<div class="row-token">'+avatarHtml+'<div><div class="row-name">'+escH(t.name)+'</div><div class="row-symbol">$'+escH(t.symbol)+'</div></div></div>';
+    html += '<div class="row-token">'+avatarHtml+'<div><div class="row-name">'+escH(t.name)+(t.isPlatform?' <span class="platform-badge">Platform</span>':'')+'</div><div class="row-symbol">$'+escH(t.symbol)+'</div></div></div>';
     html += '<div class="row-status"><span class="pill '+(isLive?'pill-live':'pill-done')+'">'+(isLive?'LIVE':'DONE')+'</span></div>';
     html += '<div class="row-progress">';
     html += '<div class="progress-bar"><div class="progress-fill '+(isLive?'fill-live':'fill-done')+'" style="width:'+pct.toFixed(1)+'%"></div></div>';
