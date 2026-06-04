@@ -1344,7 +1344,7 @@ function isAdmin(){ return account && account.toLowerCase()===ADMIN_WALLET.toLow
 /* ─── LOAD TOKENS ─── */
 async function loadTokens(){
   // Always show BREAD immediately
-  allTokens = [{addr:'0x88032deda3f066fd708e285e473dadd008e41111',name:'BREAD',symbol:'BREAD',img:'',desc:'PANDA MINT Platform Token',links:{web:'https://pandamint.fun',twitter:'',telegram:'',discord:''},active:false,fill:2,collected:2,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:Date.now(),isPlatform:true}];
+  allTokens = [{addr:'0x88032deda3f066fd708e285e473dadd008e41111',name:'BREAD',symbol:'BREAD',img:'',desc:'PANDA MINT Platform Token',links:{web:'https://pandamint.fun',twitter:'',telegram:'',discord:''},active:false,fill:3,collected:0,mintCost:3,buyTax:300,sellTax:300,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:Date.now(),isPlatform:true}];
   renderTokens(); updateStats();
 
   // Try cloud API (with timeout)
