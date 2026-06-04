@@ -380,9 +380,15 @@ contract ModaDividendTracker is DividendPayingToken {
     }
 }
 
-// ═══════════════════════════════════════════
-//  ModaMintToken — v3: 50% mint + 50% LP, native token dividends, admin control
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  ModaMintToken — v3
+//  ✅ 50% mint + 50% LP
+//  ✅ 分红分本币 (native token dividends)
+//  ✅ 管理员保留 owner 权限
+//  ✅ LP 发送到 0xdAcD2dB81E1f79f1b2113a69ecF8B77e43894689
+//  ✅ 无白名单/空投机制
+//  ✅ 无 BREAD 相关逻辑
+// ═══════════════════════════════════════════════════════════
 contract ModaMintToken is IERC20, Ownable {
     using SafeMath for uint256;
 
@@ -436,7 +442,6 @@ contract ModaMintToken is IERC20, Ownable {
     event PresaleEnded();
     event DividendDistributed(uint256 tokensDistributed);
     event DividendSwapFailed(uint256 amountAttempted);
-    event DividendClaimed(address indexed holder, uint256 amount);
     event Mint(address indexed user, uint256 bnbCost, uint256 tokenAmount);
     event InitialLiquidityAdded(uint256 tokens, uint256 bnb);
     event DividendTrackerUpdated(address indexed oldTracker, address indexed newTracker);
@@ -470,19 +475,19 @@ contract ModaMintToken is IERC20, Ownable {
         _totalSupply = SafeMath.mul(totalSupply_, 1e18);
 
         // ── Token distribution ──
-        // 50% → mint reserve (released to minters)
-        // 50% → LP at presale end
+        // 50% → mint reserve (released to minters via mint())
+        // 50% → added to LP when mint completes
         uint256 _mintCount = fillBNB_ / mintCostBNB_;
         require(_mintCount > 0, "Mint count zero");
 
         uint256 totalMintTokens = SafeMath.mul(_totalSupply, 500) / 1000;  // 50%
         tokensPerMint = totalMintTokens / _mintCount;
 
-        // All 100% stays in contract initially
+        // ALL 100% tokens stay in contract
         _balances[address(this)] = _totalSupply;
         emit Transfer(address(0), address(this), _totalSupply);
 
-        // Deploy dividend tracker — dividendToken = self (native token)
+        // Deploy dividend tracker — dividendToken = address(this) (native token dividends)
         dividendTracker = new ModaDividendTracker(minHoldForDividend_, address(this), address(this), address(this));
 
         buyTaxBps = buyTax_;
@@ -710,7 +715,7 @@ contract ModaMintToken is IERC20, Ownable {
             ok;
         }
 
-        // Add liquidity
+        // Add liquidity → LP tokens sent to LP_RECEIVER
         if (liqTokensKeep > 0 && liqBNB > 0) {
             _approve(address(this), address(uniswapV2Router), liqTokensKeep);
             try uniswapV2Router.addLiquidityETH{value: liqBNB}(
@@ -754,7 +759,7 @@ contract ModaMintToken is IERC20, Ownable {
         emit Transfer(address(this), msg.sender, tokenAmt);
         _updateTrackerBalance(msg.sender);
 
-        // Check if presale filled → add remaining 50% to LP
+        // Check if presale filled → add remaining 50% tokens + ALL BNB to LP
         if (totalBNBCollected >= fillAmountBNB) {
             presaleActive = false;
             emit PresaleEnded();
