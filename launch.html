@@ -518,20 +518,6 @@
     </div>
 
     <div class="form-row cols-2">
-      <div class="form-group" style="grid-column:1/-1">
-        <label class="form-label"><span data-i18n="field.allocScheme">Token Allocation (Fixed)</span></label>
-        <div style="background:var(--bg-input, #1a1a2e);border:1px solid var(--border, #333);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--text-muted, #888)">
-          <div style="display:flex;gap:18px;flex-wrap:wrap">
-            <span>👑 <strong style="color:#a78bfa">95%</strong> → <span data-i18n="alloc.owner">部署时直接发部署者钱包</span></span>
-            <span>🎯 <strong style="color:var(--accent1, #00d4ff)">2.5%</strong> → <span data-i18n="alloc.mint">Minter 按比例获得</span></span>
-            <span>💧 <strong style="color:var(--accent2, #00ff88)">2.5%</strong> → <span data-i18n="alloc.lp">初始底池（满后一次性加，LP 归部署者）</span></span>
-          </div>
-          <div style="margin-top:6px;color:var(--accent2, #00ff88)">✅ <span data-i18n="alloc.note">开盘价 = Mint 价格（BNB 累积，满后一次性加底池，平开）</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="form-row cols-2">
       <div class="form-group">
         <label class="form-label"><span data-i18n="field.minHold">Min Hold for Dividend</span> <span class="required">*</span></label>
         <input type="number" id="minHold" placeholder="1000" min="0" />
@@ -755,11 +741,6 @@ var I18N = {
     'hint.mintPrice':'BNB required per mint transaction',
     'field.fillBNB': 'Fundraise Target (BNB)',
     'hint.fillBNB':  'Total BNB to collect before trading opens',
-    'field.allocScheme':'Token Allocation (Fixed 95/2.5/2.5)',
-    'alloc.owner':'95% sent to deployer wallet at deployment',
-    'alloc.mint':'2.5% for minters (proportional)',
-    'alloc.lp':'2.5% for initial liquidity (added once when filled)',
-    'alloc.note':'Opening price = Mint price (flat open)',
     'field.minHold': 'Min Hold for Dividend',
     'hint.minHold':  'Min tokens to hold to receive BNB dividends',
     'field.whitelist':'Whitelist-only Mint',
@@ -819,11 +800,6 @@ var I18N = {
     'hint.mintPrice':'每次 Mint 交易需要的 BNB',
     'field.fillBNB': '募资目标 (BNB)',
     'hint.fillBNB':  '开放交易前需募集的总 BNB 数量',
-    'field.allocScheme':'代币分配方案（固定 95/2.5/2.5）',
-    'alloc.owner':'95% 部署时直接发部署者钱包',
-    'alloc.mint':'2.5% Minter 按比例获得',
-    'alloc.lp':'2.5% 初始底池（满后一次性加，LP 归部署者）',
-    'alloc.note':'开盘价 = Mint 价格（BNB 累积，满后一次性加底池，平开）',
     'field.minHold': '分红最低持有量',
     'hint.minHold':  '获得 BNB 分红需持有的最低代币数量',
     'field.vanity':   '合约靓号后缀',

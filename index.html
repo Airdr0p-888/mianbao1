@@ -355,16 +355,17 @@
     }
     .token-table-head {
       display: grid;
-      grid-template-columns: 48px 1fr 120px 140px 180px 100px;
+      grid-template-columns: 48px minmax(140px, 1fr) 100px 160px 200px 100px;
       padding: 14px 20px;
       background: var(--bg3);
       border-bottom: 1px solid var(--border);
       font-size: .72rem; letter-spacing: 1.5px;
       text-transform: uppercase; color: var(--muted2);
+      white-space: nowrap;
     }
     .token-row {
       display: grid;
-      grid-template-columns: 48px 1fr 120px 140px 180px 100px;
+      grid-template-columns: 48px minmax(140px, 1fr) 100px 160px 200px 100px;
       padding: 18px 20px;
       border-bottom: 1px solid var(--border);
       align-items: center;
@@ -645,7 +646,8 @@
       .steps-row { grid-template-columns: repeat(2, 1fr); }
       .steps-row::before { display: none; }
       .about-grid { grid-template-columns: 1fr; }
-      .token-table-head, .token-row { grid-template-columns: 40px 1fr 100px 140px 80px; }
+      .token-table-head, .token-row { grid-template-columns: 40px minmax(100px, 1fr) 90px 140px 80px; }
+      .token-table-head > :nth-child(5), .token-row > :nth-child(5),
       .token-table-head > :last-child, .token-row > :last-child { display: none; }
     }
     @media (max-width: 640px) {
@@ -655,7 +657,7 @@
       .stats-row { grid-template-columns: repeat(2, 1fr); }
       .steps-row { grid-template-columns: 1fr 1fr; }
       .token-table-head { display: none; }
-      .token-row { grid-template-columns: 1fr 100px 80px; }
+      .token-row { grid-template-columns: minmax(100px, 1fr) 90px 80px; }
       .token-row .row-num, .token-row .row-progress { display: none; }
       .footer-inner { flex-direction: column; text-align: center; }
     }
@@ -1415,6 +1417,12 @@ function applyLang(){
       el.innerHTML = dict[key];
     }
   });
+  // 更新表格列头
+  var headCols = document.querySelectorAll('.token-table-head > div');
+  var zhHeads = ['#','代币','状态','进度','铸币进度','税率 B/S'];
+  var enHeads = ['#','Token','Status','Progress','Mint Progress','Tax B/S'];
+  var heads = LANG === 'zh' ? zhHeads : enHeads;
+  headCols.forEach(function(col, i){ if(heads[i]) col.textContent = heads[i]; });
   // 连接钱包按钮也跟随切换
   var wb = document.getElementById('btn-wallet');
   if(wb && wb.textContent.indexOf('0x') < 0){
