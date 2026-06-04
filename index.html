@@ -1049,6 +1049,10 @@
     <button class="modal-x" onclick="closeDividendModal()">✕</button>
     <h3>💸 <span data-i18n="div.title">Claim Dividends</span></h3>
     <p class="modal-sub" data-i18n="div.desc">Check and claim BNB dividends from tokens you hold</p>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input type="text" id="div-custom-addr" placeholder="Paste contract address..." style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:.82rem">
+      <button class="btn btn-gold" style="padding:9px 16px;font-size:.82rem" onclick="loadCustomDividend()">🔍 <span data-i18n="div.search">Search</span></button>
+    </div>
     <div id="div-loading" style="text-align:center;padding:20px;color:var(--muted)">⏳ Loading your tokens...</div>
     <div id="div-list" style="display:none"></div>
     <div id="div-empty" style="display:none;text-align:center;padding:20px;color:var(--muted)" data-i18n="div.empty">No dividend-bearing tokens found</div>
@@ -1161,12 +1165,50 @@ function openDividendModal(){
   document.getElementById('divOverlay').classList.add('open');
   document.getElementById('div-list').style.display='none';
   document.getElementById('div-empty').style.display='none';
-  document.getElementById('div-loading').style.display='block';
+  document.getElementById('div-loading').style.display='none';
+  document.getElementById('div-custom-addr').value = '';
   loadDividends();
 }
 
 function closeDividendModal(){
   document.getElementById('divOverlay').classList.remove('open');
+}
+
+async function loadCustomDividend(){
+  var addr = document.getElementById('div-custom-addr').value.trim();
+  if(!addr){ alert('Please enter a contract address'); return; }
+  if(!addr.startsWith('0x') || addr.length!==42){ alert('Invalid contract address'); return; }
+  var listEl = document.getElementById('div-list');
+  var emptyEl = document.getElementById('div-empty');
+  var loadEl = document.getElementById('div-loading');
+  loadEl.style.display = 'block';
+  listEl.style.display = 'none';
+  emptyEl.style.display = 'none';
+  try {
+    var c = new ethers.Contract(addr, CONTRACT_DATA.ABI, provider);
+    var bal = await c.balanceOf(account).catch(function(){return ethers.BigNumber.from(0);});
+    var name = await c.name().catch(function(){return 'Unknown';});
+    var symbol = await c.symbol().catch(function(){return '?';});
+    var trackerAddr = await c.dividendTracker().catch(function(){return null;});
+    if(!trackerAddr){ loadEl.style.display='none'; emptyEl.style.display='block'; return; }
+    var tr = new ethers.Contract(trackerAddr, TRACKER_ABI, provider);
+    var wdiv = await tr.withdrawableDividendOf(account).catch(function(){return ethers.BigNumber.from(0);});
+    var wdivBNB = parseFloat(ethers.utils.formatEther(wdiv));
+    var balNum = parseFloat(ethers.utils.formatEther(bal));
+    var hasDiv = wdivBNB > 0.000000001;
+    var html = '<div class="div-row">'
+      + '<div class="div-symbol">' + symbol + '</div>'
+      + '<div class="div-name">' + name + ' · ' + (balNum > 0 ? balNum.toFixed(0) + ' held' : '0 held') + '</div>'
+      + '<div class="div-amount">' + (hasDiv ? wdivBNB.toFixed(6) + ' BNB' : '—') + '</div>'
+      + '<button class="div-btn" ' + (hasDiv ? 'onclick="claimDiv(\''+addr+'\')"' : 'disabled') + '>Claim</button>'
+      + '</div>';
+    listEl.innerHTML = html;
+    listEl.style.display = 'block';
+    loadEl.style.display = 'none';
+  } catch(e){
+    loadEl.style.display = 'none';
+    emptyEl.style.display = 'block';
+  }
 }
 
 async function loadDividends(){
@@ -1487,6 +1529,7 @@ var I18N = {
     'cta.note':  'No coding required · Gas fees paid by deployer only · Contracts verified on BSCScan',
     'div.title': 'Claim Dividends',
     'div.desc':  'Check and claim BNB dividends from tokens you hold',
+    'div.search': 'Search',
     'div.empty': 'No dividend-bearing tokens found',
   },
   zh: {
@@ -1546,6 +1589,7 @@ var I18N = {
     'cta.note':  '无需编程 · Gas 费仅由部署者支付 · 合约已在 BSCScan 验证',
     'div.title': '领取分红',
     'div.desc':  '查看并领取您持有代币的 BNB 分红',
+    'div.search': '查询',
     'div.empty': '未找到持有分红的代币',
   }
 };
