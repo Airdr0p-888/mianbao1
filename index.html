@@ -1274,7 +1274,13 @@ async function claimDiv(tokenAddr, btnEl){
     btnEl.style.background = 'rgba(0,255,136,.15)'; btnEl.style.borderColor = 'var(--accent2)'; btnEl.style.color = 'var(--accent2)';
     setTimeout(function(){ loadDividends(); }, 2000);
   } catch(e){
-    alert('Claim failed: ' + (e.reason || e.message));
+    var msg = e.reason || e.message || '';
+    // decode common revert reasons
+    if(msg.indexOf('Claim wait not met')>=0){ msg = LANG==='zh' ? '领取冷却中，请1小时后重试' : 'Claim cooldown, try again after 1 hour'; }
+    else if(msg.indexOf('Not whitelisted')>=0){ msg = LANG==='zh' ? '不在白名单中' : 'Not whitelisted'; }
+    else if(msg.indexOf('Trading not active')>=0){ msg = LANG==='zh' ? '交易未开启' : 'Trading not active'; }
+    else if(msg.indexOf('execution reverted')>=0 && msg.length>100){ msg = msg.split('execution reverted:')[1] || msg; }
+    alert((LANG==='zh'?'领取失败: ':'Claim failed: ') + msg);
     loadDividends();
   }
 }
