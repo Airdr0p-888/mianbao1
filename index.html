@@ -419,6 +419,15 @@
       transition: all .15s; flex-shrink: 0;
     }
     .del-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .edit-btn {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 1px solid rgba(245,200,66,.25);
+      background: rgba(245,200,66,.06);
+      color: #f5c842; font-size: .65rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all .15s; flex-shrink: 0;
+    }
+    .edit-btn:hover { background: #f5c842; color: #000; border-color: #f5c842; }
     .table-empty {
       text-align: center; padding: 60px 20px;
       color: var(--muted); font-size: .9rem;
@@ -1022,6 +1031,37 @@
   </div>
 </section>
 
+<!-- ═══ EDIT TOKEN MODAL ═══ -->
+<div class="overlay" id="editOverlay">
+  <div class="modal" style="width:520px">
+    <button class="modal-x" onclick="closeEdit()">×</button>
+    <h3>✏️ Edit Token Metadata</h3>
+    <p class="modal-sub" id="edit-contract-addr">Contract: —</p>
+    <label>Token Name</label>
+    <input type="text" id="edit-name" placeholder="Token Name" />
+    <label>Symbol</label>
+    <input type="text" id="edit-symbol" placeholder="SYMBOL" style="text-transform:uppercase" />
+    <label>Logo Image URL or Data URI</label>
+    <input type="text" id="edit-img" placeholder="https://... or data:image/..." />
+    <label>Description</label>
+    <input type="text" id="edit-desc" placeholder="Short description (max 280 chars)" maxlength="280" />
+    <label>Website URL</label>
+    <input type="text" id="edit-web" placeholder="https://..." />
+    <label>Twitter / X</label>
+    <input type="text" id="edit-twitter" placeholder="https://x.com/..." />
+    <label>Telegram</label>
+    <input type="text" id="edit-telegram" placeholder="https://t.me/..." />
+    <label>Discord</label>
+    <input type="text" id="edit-discord" placeholder="https://discord.gg/..." />
+    <button class="btn btn-gold" id="edit-submit-btn" onclick="submitEdit()">💾 Save Changes</button>
+    <div class="modal-ok" id="edit-ok">
+      <div class="check-icon">✅</div>
+      <h3>Updated Successfully</h3>
+      <p>The token metadata has been saved.</p>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ REFUND MODAL ═══ -->
 <div class="overlay" id="refundOverlay">
   <div class="modal">
@@ -1263,7 +1303,7 @@ async function loadDividends(){
 
 async function claimDiv(tokenAddr, btnEl){
   if(!signer){ alert('Please connect wallet first'); return; }
-  btnEl = btnEl || event.target;
+  if(!btnEl) return;
   try {
     var c = new ethers.Contract(tokenAddr, CONTRACT_DATA.ABI, signer);
     var tx = await c.claimDividend();
@@ -1400,7 +1440,7 @@ function renderTokens(){
     html += '<div class="token-row" onclick="openToken(\''+t.addr+'\')" title="View on Ave.ai">';
 
     if(isAdmin()){
-      html += '<div style="display:flex;align-items:center;gap:6px"><span class="row-num">'+(i+1)+'</span><button class="del-btn" onclick="event.stopPropagation();deleteToken(\''+t.addr+'\')">✕</button></div>';
+      html += '<div style="display:flex;align-items:center;gap:6px"><span class="row-num">'+(i+1)+'</span><button class="edit-btn" onclick="event.stopPropagation();editToken(\''+t.addr+'\')">✎</button><button class="del-btn" onclick="event.stopPropagation();deleteToken(\''+t.addr+'\')">✕</button></div>';
     } else {
       html += '<div class="row-num">'+(i+1)+'</div>';
     }
@@ -1419,6 +1459,81 @@ function renderTokens(){
 }
 
 function openToken(addr){ window.open('https://ave.ai/token/'+addr+'-bsc?from=Token','_blank'); }
+
+/* ─── EDIT TOKEN ─── */
+var _editingAddr = '';
+
+function editToken(addr){
+  _editingAddr = addr;
+  var t = allTokens.find(function(x){ return x.addr===addr; });
+  if(!t) return;
+
+  document.getElementById('edit-contract-addr').textContent = 'Contract: '+addr;
+  document.getElementById('edit-name').value = t.name || '';
+  document.getElementById('edit-symbol').value = t.symbol || '';
+  document.getElementById('edit-img').value = t.img || '';
+  document.getElementById('edit-desc').value = t.desc || '';
+  document.getElementById('edit-web').value = (t.links && t.links.web) || '';
+  document.getElementById('edit-twitter').value = (t.links && t.links.twitter) || '';
+  document.getElementById('edit-telegram').value = (t.links && t.links.telegram) || '';
+  document.getElementById('edit-discord').value = (t.links && t.links.discord) || '';
+  document.getElementById('edit-ok').style.display = 'none';
+  document.getElementById('edit-submit-btn').style.display = '';
+  document.getElementById('editOverlay').classList.add('open');
+}
+
+function closeEdit(){
+  document.getElementById('editOverlay').classList.remove('open');
+}
+
+async function submitEdit(){
+  var btn = document.getElementById('edit-submit-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  var body = { a: _editingAddr };
+  var n = document.getElementById('edit-name').value.trim();
+  var s = document.getElementById('edit-symbol').value.trim();
+  var img = document.getElementById('edit-img').value.trim();
+  var desc = document.getElementById('edit-desc').value.trim();
+  var links = {
+    web: document.getElementById('edit-web').value.trim(),
+    twitter: document.getElementById('edit-twitter').value.trim(),
+    telegram: document.getElementById('edit-telegram').value.trim(),
+    discord: document.getElementById('edit-discord').value.trim()
+  };
+
+  if(n) body.n = n;
+  if(s) body.s = s;
+  body.img = img;
+  body.desc = desc;
+  body.links = links;
+
+  try {
+    var r = await fetch(API_BASE+'/api/tokens', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Wallet': account },
+      body: JSON.stringify(body)
+    });
+    if(!r.ok){ var e = await r.json().catch(function(){ return {}; }); alert('Update failed: '+(e.error||r.status)); btn.disabled=false; btn.textContent='💾 Save Changes'; return; }
+
+    // Update local state
+    var t = allTokens.find(function(x){ return x.addr===_editingAddr; });
+    if(t){
+      if(body.n !== undefined) t.name = body.n;
+      if(body.s !== undefined) t.symbol = body.s;
+      t.img = body.img;
+      t.desc = body.desc;
+      t.links = body.links;
+    }
+
+    btn.style.display = 'none';
+    document.getElementById('edit-ok').style.display = 'block';
+    renderTokens();
+  } catch(err){
+    alert('Network error: '+err.message);
+    btn.disabled = false; btn.textContent = '💾 Save Changes';
+  }
+}
 
 async function deleteToken(addr){
   if(!confirm('Remove token '+addr.slice(0,10)+'... from the listing?\n\nThis only removes it from the display. The contract remains on-chain.')) return;
@@ -1455,6 +1570,7 @@ function openRefund(){
 }
 function closeRefund(){ document.getElementById('refundOverlay').classList.remove('open'); }
 document.getElementById('refundOverlay').addEventListener('click',function(e){if(e.target===this) closeRefund();});
+document.getElementById('editOverlay').addEventListener('click',function(e){if(e.target===this) closeEdit();});
 
 async function submitRefund(){
   var w=document.getElementById('r-wallet').value.trim();
