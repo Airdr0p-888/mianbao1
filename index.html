@@ -1200,7 +1200,7 @@ async function loadCustomDividend(){
       + '<div class="div-symbol">' + symbol + '</div>'
       + '<div class="div-name">' + name + ' · ' + (balNum > 0 ? balNum.toFixed(0) + ' held' : '0 held') + '</div>'
       + '<div class="div-amount">' + (hasDiv ? wdivBNB.toFixed(6) + ' BNB' : '—') + '</div>'
-      + '<button class="div-btn" ' + (hasDiv ? 'onclick="claimDiv(\''+addr+'\')"' : 'disabled') + '>Claim</button>'
+      + '<button class="div-btn" ' + (hasDiv ? 'onclick="claimDiv(\''+addr+'\',this)"' : 'disabled') + '>Claim</button>'
       + '</div>';
     listEl.innerHTML = html;
     listEl.style.display = 'block';
@@ -1254,23 +1254,24 @@ async function loadDividends(){
       + '<div class="div-symbol">' + r.symbol + '</div>'
       + '<div class="div-name">' + r.name + ' · ' + r.balance.toFixed(0) + ' held</div>'
       + '<div class="div-amount">' + (hasDiv ? r.withdrawable.toFixed(6) + ' BNB' : '—') + '</div>'
-      + '<button class="div-btn" ' + (hasDiv ? 'onclick="claimDiv(\''+r.addr+'\')"' : 'disabled') + '>Claim</button>'
+      + '<button class="div-btn" ' + (hasDiv ? 'onclick="claimDiv(\''+r.addr+'\',this)"' : 'disabled') + '>Claim</button>'
       + '</div>';
   }
   listEl.innerHTML = html;
   listEl.style.display = 'block';
 }
 
-async function claimDiv(tokenAddr){
+async function claimDiv(tokenAddr, btnEl){
   if(!signer){ alert('Please connect wallet first'); return; }
+  btnEl = btnEl || event.target;
   try {
     var c = new ethers.Contract(tokenAddr, CONTRACT_DATA.ABI, signer);
     var tx = await c.claimDividend();
-    var btn = event.target;
-    btn.disabled = true;
-    btn.textContent = 'Pending...';
+    btnEl.disabled = true;
+    btnEl.textContent = LANG === 'zh' ? '领取中...' : 'Pending...';
     await tx.wait();
-    btn.textContent = 'Done ✓';
+    btnEl.textContent = LANG === 'zh' ? '已领取' : 'Claimed';
+    btnEl.style.background = 'rgba(0,255,136,.15)'; btnEl.style.borderColor = 'var(--accent2)'; btnEl.style.color = 'var(--accent2)';
     setTimeout(function(){ loadDividends(); }, 2000);
   } catch(e){
     alert('Claim failed: ' + (e.reason || e.message));
