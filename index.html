@@ -1343,34 +1343,37 @@ function isAdmin(){ return account && account.toLowerCase()===ADMIN_WALLET.toLow
 
 /* ─── LOAD TOKENS ─── */
 async function loadTokens(){
-  document.getElementById('token-list').innerHTML = '<div class="table-empty">⏳ Loading from cloud...</div>';
+  // Always show BREAD immediately
+  allTokens = [{addr:'0x88032deda3f066fd708e285e473dadd008e41111',name:'BREAD',symbol:'BREAD',img:'',desc:'PANDA MINT Platform Token',links:{web:'https://pandamint.fun',twitter:'',telegram:'',discord:''},active:false,fill:2,collected:2,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:Date.now(),isPlatform:true}];
+  renderTokens(); updateStats();
+
+  // Try cloud API (with timeout)
   var cloud = null;
   try {
-    var r = await fetch(API_BASE+'/api/tokens',{cache:'no-cache'});
+    var ctrl = new AbortController();
+    var tmr = setTimeout(function(){ ctrl.abort(); }, 8000);
+    var r = await fetch(API_BASE+'/api/tokens',{cache:'no-cache',signal:ctrl.signal});
+    clearTimeout(tmr);
     if(r.ok){ var d = await r.json(); if(Array.isArray(d)) cloud=d; }
   } catch(e){}
 
-  if(cloud !== null){
-    allTokens = cloud.map(function(t){ return {addr:t.a,name:t.n,symbol:t.s,img:t.img||'',desc:t.desc||'',links:t.links||{},wl:t.wl||0,active:false,fill:0,collected:0,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:t.t||0}; });
-    allTokens.sort(function(a,b){ return b._t-a._t; });
-    allTokens.unshift({addr:'0x88032deda3f066fd708e285e473dadd008e41111',name:'BREAD',symbol:'BREAD',img:'',desc:'PANDA MINT Platform Token',links:{web:'https://pandamint.fun',twitter:'',telegram:'',discord:''},active:false,fill:2,collected:2,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:Date.now(),isPlatform:true});
-    renderTokens();
-    updateStats();
-    syncChain();
-    return;
-  }
-  // Fallback: on-chain
-  try {
-    var addrs = await getDeployerTokens(provider, FACTORY_ADDR, DEPLOYER_WALLET);
-    allTokens = [];
-    allTokens.push({addr:'0x88032deda3f066fd708e285e473dadd008e41111',name:'BREAD',symbol:'BREAD',img:'',desc:'PANDA MINT Platform Token',links:{web:'https://pandamint.fun',twitter:'',telegram:'',discord:''},active:false,fill:2,collected:2,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:Date.now(),isPlatform:true});
-    for(var i=0;i<addrs.length;i++){
-      try { allTokens.push(await fetchToken(addrs[i])); } catch(e){}
+  if(cloud !== null && cloud.length){
+    var cloudMapped = cloud.map(function(t){ return {addr:t.a,name:t.n,symbol:t.s,img:t.img||'',desc:t.desc||'',links:t.links||{},wl:t.wl||0,active:false,fill:0,collected:0,mintCost:0,buyTax:0,sellTax:0,mktBps:0,burnBps:0,divBps:0,liqBps:0,_t:t.t||0}; });
+    cloudMapped.sort(function(a,b){ return b._t-a._t; });
+    allTokens = allTokens.concat(cloudMapped);
+  } else {
+    // Fallback: on-chain
+    try {
+      var addrs = await getDeployerTokens(provider, FACTORY_ADDR, DEPLOYER_WALLET);
+      for(var i=0;i<addrs.length;i++){
+        try { allTokens.push(await fetchToken(addrs[i])); } catch(e){}
+      }
+    } catch(e){
+      console.error('Chain fallback failed:', e.message||e);
     }
-    renderTokens(); updateStats();
-  } catch(e){
-    document.getElementById('token-list').innerHTML = '<div class="table-empty">⚠️ Failed to load: '+(e.message||'unknown error')+'</div>';
   }
+  renderTokens(); updateStats();
+  syncChain();
 }
 
 async function syncChain(){
