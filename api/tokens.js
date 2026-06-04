@@ -9,7 +9,6 @@ const DEPLOYER_WALLET = '0x2aF55B34E616dCe99230fC8C694a6E6fFdF79e5b';
 const REDIS_KEY = 'tokens_data';
 
 // 初始化 Redis（通过 Vercel Upstash 集成自动注入环境变量）
-// Upstash 注入的是 KV_REST_API_URL + KV_REST_API_TOKEN
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
@@ -18,7 +17,7 @@ const redis = new Redis({
 module.exports = async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Wallet');
 
   if (req.method === 'OPTIONS') {
@@ -30,6 +29,8 @@ module.exports = async function handler(req, res) {
       return await listTokens(req, res);
     } else if (req.method === 'POST') {
       return await addToken(req, res);
+    } else if (req.method === 'PUT') {
+      return await updateToken(req, res);
     } else if (req.method === 'DELETE') {
       return await deleteToken(req, res);
     } else {
@@ -45,7 +46,6 @@ module.exports = async function handler(req, res) {
 async function listTokens(req, res) {
   let tokens = await redis.get(REDIS_KEY);
   if (!tokens) tokens = [];
-  // 返回所有代币（不再按钱包过滤）
   return res.status(200).json(tokens);
 }
 
@@ -67,6 +67,43 @@ async function addToken(req, res) {
 
   await redis.set(REDIS_KEY, tokens);
   return res.status(200).json({ ok: true, count: tokens.length });
+}
+
+// PUT /api/tokens — update token metadata
+async function updateToken(req, res) {
+  var adminWallet = req.headers['x-admin-wallet'];
+  if (!adminWallet || adminWallet.toLowerCase() !== ADMIN_WALLET.toLowerCase()) {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+
+  var body = req.body;
+  if (!body || !body.a) {
+    return res.status(400).json({ error: 'Missing contract address (a)' });
+  }
+
+  var tokens = await redis.get(REDIS_KEY);
+  if (!tokens) tokens = [];
+
+  var found = false;
+  for (var i = 0; i < tokens.length; i++) {
+    if (tokens[i].a === body.a) {
+      // 只更新传入的非空字段
+      if (body.n !== undefined) tokens[i].n = body.n;
+      if (body.s !== undefined) tokens[i].s = body.s;
+      if (body.img !== undefined) tokens[i].img = body.img;
+      if (body.desc !== undefined) tokens[i].desc = body.desc;
+      if (body.links !== undefined) tokens[i].links = body.links;
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    return res.status(404).json({ error: 'Token not found' });
+  }
+
+  await redis.set(REDIS_KEY, tokens);
+  return res.status(200).json({ ok: true });
 }
 
 // DELETE /api/tokens
