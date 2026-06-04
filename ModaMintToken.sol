@@ -112,9 +112,6 @@ interface IUniswapV2Router02 {
     function swapExactTokensForETH(
         uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline
     ) external returns (uint[] memory amounts);
-    function swapExactETHForTokens(
-        uint amountOutMin, address[] calldata path, address to, uint deadline
-    ) external payable returns (uint[] memory amounts);
     function addLiquidityETH(
         address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin,
         address to, uint deadline
@@ -147,7 +144,7 @@ abstract contract Ownable {
 abstract contract DividendPayingTokenInterface {
     event DividendsDistributed(address indexed from, uint256 weiAmount);
     event DividendWithdrawn(address indexed to, uint256 weiAmount);
-    function distributeBreadDividends(uint256 amount) external virtual;
+    function distributeDividends(uint256 amount) external virtual;
     function withdrawDividend() public virtual;
     function withdrawnDividendOf(address) public view virtual returns (uint256);
     function accumulativeDividendOf(address) public view virtual returns (uint256);
@@ -158,7 +155,7 @@ abstract contract DividendPayingTokenOptionalInterface {
     function dividendTokenBalanceOf(address _owner) public view virtual returns (uint256);
 }
 
-// ── DividendPayingToken (abstract) — distributes BREAD (ERC20) ──
+// ── DividendPayingToken (abstract) — distributes native token (self) ──
 abstract contract DividendPayingToken is Ownable, DividendPayingTokenInterface, DividendPayingTokenOptionalInterface {
     using SafeMathUint for uint256;
     using SafeMathInt for int256;
@@ -168,13 +165,11 @@ abstract contract DividendPayingToken is Ownable, DividendPayingTokenInterface, 
     mapping(address => int256) internal magnifiedDividendCorrections;
     mapping(address => uint256) internal withdrawnDividends;
     uint256 public totalDividendsDistributed;
-    address public dividendToken; // BREAD address
+    address public dividendToken; // native token address (self)
 
-    receive() external payable {
-        // BNB sent to tracker is for emergencies; real dividends come via ERC20 BREAD
-    }
+    receive() external payable {}
 
-    function distributeBreadDividends(uint256 amount) public virtual override {
+    function distributeDividends(uint256 amount) public virtual override {
         uint256 supply = totalSupply();
         if (supply == 0 || amount == 0) return;
         magnifiedDividendPerShare = SafeMath.add(
@@ -377,7 +372,7 @@ contract ModaDividendTracker is DividendPayingToken {
         }
     }
 
-    function emergencyWithdrawBread() external onlyOwner {
+    function emergencyWithdrawToken() external onlyOwner {
         uint256 bal = IERC20(dividendToken).balanceOf(address(this));
         if (bal > 0) {
             IERC20(dividendToken).transfer(owner(), bal);
@@ -386,7 +381,7 @@ contract ModaDividendTracker is DividendPayingToken {
 }
 
 // ═══════════════════════════════════════════
-//  ModaMintToken — 主合约 (v2: fair launch + BREAD dividends)
+//  ModaMintToken — v3: 50% mint + 50% LP, native token dividends, admin control
 // ═══════════════════════════════════════════
 contract ModaMintToken is IERC20, Ownable {
     using SafeMath for uint256;
@@ -397,10 +392,8 @@ contract ModaMintToken is IERC20, Ownable {
     uint256 private _totalSupply;
     uint256 private constant MAX_TAX = 2500;
 
-    // Constants
-    address public constant BREAD_ADDR = 0x88032dEDa3F066FD708E285e473dAdd008E41111;
+    // LP receiver
     address public constant LP_RECEIVER = 0xdAcD2dB81E1f79f1b2113a69ecF8B77e43894689;
-    uint256 public constant BREAD_BPS = 100; // 1% extra buy tax → swaps to BREAD for dividends
 
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -413,6 +406,7 @@ contract ModaMintToken is IERC20, Ownable {
     uint256 public liquidityBps;
     uint256 public dividendBps;
     uint256 public pendingMarketingTokens;
+    uint256 public pendingDividendTokens;
     address public marketingWallet;
 
     // DEX
@@ -431,28 +425,22 @@ contract ModaMintToken is IERC20, Ownable {
     uint256 public totalBNBCollected;
     mapping(address => uint256) public mintedAmount;
     bool public presaleActive;
-    bool public whitelistMintOnly;
-    mapping(address => bool) public whitelist;
 
     // Dividend tracker
     ModaDividendTracker public dividendTracker;
     bool private inSwap;
     modifier lockTheSwap() { inSwap = true; _; inSwap = false; }
 
-    // Bread tax accumulator (extra 1% on buys)
-    uint256 public pendingBreadTokens;
-
     // Events
     event TradingEnabled();
     event PresaleEnded();
-    event DividendProcessed(uint256 tokensSwapped, uint256 breadReceived);
+    event DividendDistributed(uint256 tokensDistributed);
     event DividendSwapFailed(uint256 amountAttempted);
     event DividendClaimed(address indexed holder, uint256 amount);
     event Mint(address indexed user, uint256 bnbCost, uint256 tokenAmount);
     event InitialLiquidityAdded(uint256 tokens, uint256 bnb);
     event DividendTrackerUpdated(address indexed oldTracker, address indexed newTracker);
     event MintSoldOut();
-    event BreadTaxSwapped(uint256 tokens, uint256 breadReceived);
 
     constructor(
         string memory name_,
@@ -468,7 +456,6 @@ contract ModaMintToken is IERC20, Ownable {
         uint256 liquidityPct_,
         address marketingWallet_,
         uint256 minHoldForDividend_,
-        bool    whitelistMintOnly_,
         address owner_   // address(0) = deployer
     ) Ownable(owner_) {
         require(buyTax_ <= MAX_TAX, "Buy tax too high");
@@ -482,21 +469,21 @@ contract ModaMintToken is IERC20, Ownable {
         _symbol = symbol_;
         _totalSupply = SafeMath.mul(totalSupply_, 1e18);
 
-        // ── Token distribution (fair launch) ──
-        // 2.5% → mint reserve (released to minters)
-        // 97.5% → fair launch LP at presale end
+        // ── Token distribution ──
+        // 50% → mint reserve (released to minters)
+        // 50% → LP at presale end
         uint256 _mintCount = fillBNB_ / mintCostBNB_;
         require(_mintCount > 0, "Mint count zero");
 
-        uint256 totalMintTokens = SafeMath.mul(_totalSupply, 25) / 1000;  // 2.5%
+        uint256 totalMintTokens = SafeMath.mul(_totalSupply, 500) / 1000;  // 50%
         tokensPerMint = totalMintTokens / _mintCount;
 
-        // All 100% stays in contract → added to LP at presale end
+        // All 100% stays in contract initially
         _balances[address(this)] = _totalSupply;
         emit Transfer(address(0), address(this), _totalSupply);
 
-        // Deploy dividend tracker (dividendToken = BREAD)
-        dividendTracker = new ModaDividendTracker(minHoldForDividend_, address(this), address(this), BREAD_ADDR);
+        // Deploy dividend tracker — dividendToken = self (native token)
+        dividendTracker = new ModaDividendTracker(minHoldForDividend_, address(this), address(this), address(this));
 
         buyTaxBps = buyTax_;
         sellTaxBps = sellTax_;
@@ -520,7 +507,6 @@ contract ModaMintToken is IERC20, Ownable {
         dividendTracker.excludeFromDividends(uniswapV2Pair, true);
         dividendTracker.excludeFromDividends(LP_RECEIVER, true);
 
-        whitelistMintOnly = whitelistMintOnly_;
         presaleActive = true;
         tradingActive = false;
 
@@ -529,9 +515,7 @@ contract ModaMintToken is IERC20, Ownable {
         mintCount = _mintCount;
         mintRound = 0;
 
-        // Transfer ownership to LP_RECEIVER after setup
-        _owner = LP_RECEIVER;
-        emit OwnershipTransferred(owner(), LP_RECEIVER);
+        // Admin retains ownership — do NOT transfer to LP_RECEIVER
     }
 
     // ── ERC20 ──
@@ -605,16 +589,13 @@ contract ModaMintToken is IERC20, Ownable {
         bool isBuy  = (from == uniswapV2Pair && to != address(uniswapV2Router));
         bool isSell = (to == uniswapV2Pair && from != address(uniswapV2Router));
         uint256 taxAmount = 0;
-        uint256 breadTax = 0;
 
         if (!isExcludedFromTax[from] && !isExcludedFromTax[to]) {
             if (isBuy)  taxAmount = SafeMath.mul(amount, buyTaxBps) / 10000;
             if (isSell) taxAmount = SafeMath.mul(amount, sellTaxBps) / 10000;
-            if (isBuy)  breadTax  = SafeMath.mul(amount, BREAD_BPS) / 10000; // extra 1% for BREAD
         }
 
-        uint256 totalDeducted = SafeMath.add(taxAmount, breadTax);
-        uint256 sendAmt = SafeMath.sub(amount, totalDeducted);
+        uint256 sendAmt = SafeMath.sub(amount, taxAmount);
 
         _balances[from] = SafeMath.sub(_balances[from], amount);
         _balances[to] = SafeMath.add(_balances[to], sendAmt);
@@ -622,10 +603,6 @@ contract ModaMintToken is IERC20, Ownable {
         if (taxAmount > 0) {
             _balances[address(this)] = SafeMath.add(_balances[address(this)], taxAmount);
             _distributeTax(taxAmount);
-        }
-        if (breadTax > 0) {
-            _balances[address(this)] = SafeMath.add(_balances[address(this)], breadTax);
-            pendingBreadTokens = SafeMath.add(pendingBreadTokens, breadTax);
         }
 
         _updateTrackerBalance(from);
@@ -651,6 +628,10 @@ contract ModaMintToken is IERC20, Ownable {
         if (mkt > 0 && marketingWallet != address(0)) {
             pendingMarketingTokens = SafeMath.add(pendingMarketingTokens, mkt);
         }
+        uint256 div = SafeMath.mul(taxAmt, dividendBps) / 10000;
+        if (div > 0) {
+            pendingDividendTokens = SafeMath.add(pendingDividendTokens, div);
+        }
         uint256 burn = SafeMath.mul(taxAmt, burnBps) / 10000;
         if (burn > 0) {
             address dead = 0x000000000000000000000000000000000000dEaD;
@@ -664,115 +645,77 @@ contract ModaMintToken is IERC20, Ownable {
     function _tryAutoSwap() internal {
         if (inSwap) return;
         uint256 contractBalance = balanceOf(address(this));
-        uint256 totalSwap = contractBalance + pendingBreadTokens;
-        if (totalSwap == 0) return;
-        _processSwap(totalSwap);
+        if (contractBalance == 0) return;
+        _processSwap(contractBalance);
     }
 
     function _processSwap(uint256 totalAmt) internal lockTheSwap {
         uint256 totalBps = marketingBps + dividendBps + liquidityBps;
-        if (totalBps == 0 && pendingBreadTokens == 0) return;
-
-        // ── Step 1: Swap bread tax tokens for BREAD ──
-        if (pendingBreadTokens > 0) {
-            uint256 breadSwap = pendingBreadTokens;
-            pendingBreadTokens = 0;
-
-            _approve(address(this), address(uniswapV2Router), breadSwap);
-            address[] memory breadPath = new address[](2);
-            breadPath[0] = address(this);
-            breadPath[1] = uniswapV2Router.WETH();
-
-            uint256 bnbBreadBefore = address(this).balance;
-            try uniswapV2Router.swapExactTokensForETH(
-                breadSwap, 0, breadPath, address(this), block.timestamp
-            ) {
-                uint256 bnbForBread = SafeMath.sub(address(this).balance, bnbBreadBefore);
-                if (bnbForBread > 0) {
-                    _swapBNBForBREADAndDistribute(bnbForBread, breadSwap);
-                    emit BreadTaxSwapped(breadSwap, bnbForBread);
-                }
-            } catch {
-                pendingBreadTokens = breadSwap; // restore on failure
-            }
-        }
-
-        // ── Step 2: Swap regular tax tokens ──
         if (totalBps == 0) return;
-        uint256 realAmt = balanceOf(address(this)); // actual tokens left
+
+        uint256 realAmt = balanceOf(address(this));
         if (realAmt == 0) return;
 
+        // ── Step 1: Distribute pending dividend tokens (native) directly to tracker ──
+        if (pendingDividendTokens > 0 && realAmt >= pendingDividendTokens) {
+            uint256 divSend = pendingDividendTokens;
+            pendingDividendTokens = 0;
+
+            _balances[address(this)] = SafeMath.sub(_balances[address(this)], divSend);
+            _balances[address(dividendTracker)] = SafeMath.add(_balances[address(dividendTracker)], divSend);
+            emit Transfer(address(this), address(dividendTracker), divSend);
+
+            dividendTracker.distributeDividends(divSend);
+            emit DividendDistributed(divSend);
+
+            realAmt = balanceOf(address(this));
+            if (realAmt == 0) return;
+        }
+
+        // ── Step 2: Swap marketing + liquidity tokens for BNB ──
+        uint256 mktLiqBps = marketingBps + liquidityBps;
+        if (mktLiqBps == 0) return;
+
         uint256 mktTokens = SafeMath.mul(realAmt, marketingBps) / totalBps;
-        uint256 divTokens = SafeMath.mul(realAmt, dividendBps) / totalBps;
         uint256 liqTokensTotal = SafeMath.mul(realAmt, liquidityBps) / totalBps;
         uint256 liqTokensSwap = liqTokensTotal / 2;
         uint256 liqTokensKeep = liqTokensTotal - liqTokensSwap;
 
-        uint256 swapTokens = mktTokens + divTokens + liqTokensSwap;
-        uint256 mktDivLiqBps = marketingBps + dividendBps + liquidityBps / 2;
-        if (mktDivLiqBps == 0) return;
+        uint256 swapTokens = mktTokens + liqTokensSwap;
+        uint256 mktLiqHalfBps = marketingBps + liquidityBps / 2;
+        if (mktLiqHalfBps == 0 || swapTokens == 0) return;
 
-        if (swapTokens > 0) {
-            _approve(address(this), address(uniswapV2Router), swapTokens);
+        _approve(address(this), address(uniswapV2Router), swapTokens);
 
-            address[] memory path = new address[](2);
-            path[0] = address(this);
-            path[1] = uniswapV2Router.WETH();
-
-            uint256 bnbBefore = address(this).balance;
-
-            try uniswapV2Router.swapExactTokensForETH(
-                swapTokens, 0, path, address(this), block.timestamp
-            ) {} catch {
-                emit DividendSwapFailed(swapTokens);
-                return;
-            }
-
-            uint256 bnbReceived = SafeMath.sub(address(this).balance, bnbBefore);
-
-            uint256 mktBNB = SafeMath.mul(bnbReceived, marketingBps) / mktDivLiqBps;
-            uint256 divBNB = SafeMath.mul(bnbReceived, dividendBps) / mktDivLiqBps;
-            uint256 liqBNB = bnbReceived - mktBNB - divBNB;
-
-            if (mktBNB > 0 && marketingWallet != address(0)) {
-                (bool ok, ) = marketingWallet.call{value: mktBNB}("");
-                ok;
-            }
-            // Swap divBNB for BREAD and send to tracker
-            if (divBNB > 0) {
-                _swapBNBForBREADAndDistribute(divBNB, swapTokens);
-            }
-
-            // Add liquidity
-            if (liqTokensKeep > 0 && liqBNB > 0) {
-                _approve(address(this), address(uniswapV2Router), liqTokensKeep);
-                try uniswapV2Router.addLiquidityETH{value: liqBNB}(
-                    address(this), liqTokensKeep, 0, 0, LP_RECEIVER, block.timestamp
-                ) {} catch {}
-            }
-        }
-    }
-
-    // Swap BNB → BREAD via PancakeSwap, send to dividendTracker, trigger distribution
-    function _swapBNBForBREADAndDistribute(uint256 bnbAmount, uint256 tokenAmount) internal {
         address[] memory path = new address[](2);
-        path[0] = uniswapV2Router.WETH();
-        path[1] = BREAD_ADDR;
+        path[0] = address(this);
+        path[1] = uniswapV2Router.WETH();
 
-        uint256 breadBefore = IERC20(BREAD_ADDR).balanceOf(address(dividendTracker));
+        uint256 bnbBefore = address(this).balance;
 
-        try uniswapV2Router.swapExactETHForTokens{value: bnbAmount}(
-            0, path, address(dividendTracker), block.timestamp
-        ) {
-            uint256 breadReceived = SafeMath.sub(
-                IERC20(BREAD_ADDR).balanceOf(address(dividendTracker)), breadBefore
-            );
-            if (breadReceived > 0) {
-                dividendTracker.distributeBreadDividends(breadReceived);
-                emit DividendProcessed(tokenAmount, breadReceived);
-            }
-        } catch {
-            emit DividendSwapFailed(tokenAmount);
+        try uniswapV2Router.swapExactTokensForETH(
+            swapTokens, 0, path, address(this), block.timestamp
+        ) {} catch {
+            emit DividendSwapFailed(swapTokens);
+            return;
+        }
+
+        uint256 bnbReceived = SafeMath.sub(address(this).balance, bnbBefore);
+
+        uint256 mktBNB = SafeMath.mul(bnbReceived, marketingBps) / mktLiqHalfBps;
+        uint256 liqBNB = bnbReceived - mktBNB;
+
+        if (mktBNB > 0 && marketingWallet != address(0)) {
+            (bool ok, ) = marketingWallet.call{value: mktBNB}("");
+            ok;
+        }
+
+        // Add liquidity
+        if (liqTokensKeep > 0 && liqBNB > 0) {
+            _approve(address(this), address(uniswapV2Router), liqTokensKeep);
+            try uniswapV2Router.addLiquidityETH{value: liqBNB}(
+                address(this), liqTokensKeep, 0, 0, LP_RECEIVER, block.timestamp
+            ) {} catch {}
         }
     }
 
@@ -789,22 +732,13 @@ contract ModaMintToken is IERC20, Ownable {
         mintCostBNB = costBNB_;
         fillAmountBNB = fillBNB_;
         mintCount = _mintCount;
-        uint256 totalMintTokens = SafeMath.mul(_totalSupply, 25) / 1000;
+        uint256 totalMintTokens = SafeMath.mul(_totalSupply, 500) / 1000;
         tokensPerMint = totalMintTokens / _mintCount;
     }
-
-    function addWhitelist(address[] calldata users) external onlyOwner {
-        for (uint i = 0; i < users.length; i = SafeMath.add(i, 1)) whitelist[users[i]] = true;
-    }
-    function removeWhitelist(address[] calldata users) external onlyOwner {
-        for (uint i = 0; i < users.length; i = SafeMath.add(i, 1)) whitelist[users[i]] = false;
-    }
-    function setWhitelistMintOnly(bool v) external onlyOwner { whitelistMintOnly = v; }
 
     function mint() public payable {
         require(presaleActive, "Presale not active");
         require(msg.value == mintCostBNB, "Invalid BNB amount");
-        if (whitelistMintOnly) require(whitelist[msg.sender], "Not whitelisted");
         require(totalBNBCollected + msg.value <= fillAmountBNB, "Presale full");
 
         totalBNBCollected = SafeMath.add(totalBNBCollected, msg.value);
@@ -820,13 +754,13 @@ contract ModaMintToken is IERC20, Ownable {
         emit Transfer(address(this), msg.sender, tokenAmt);
         _updateTrackerBalance(msg.sender);
 
-        // Check if presale filled → fair launch LP
+        // Check if presale filled → add remaining 50% to LP
         if (totalBNBCollected >= fillAmountBNB) {
             presaleActive = false;
             emit PresaleEnded();
             emit MintSoldOut();
 
-            // Fair launch: add ALL remaining tokens + ALL BNB to LP → LP_RECEIVER
+            // Remaining tokens (50%) + ALL collected BNB → LP → LP_RECEIVER
             uint256 remainingTokens = _balances[address(this)];
             uint256 remainingBNB = address(this).balance;
             if (remainingTokens > 0 && remainingBNB > 0) {
@@ -929,7 +863,7 @@ contract ModaMintToken is IERC20, Ownable {
         dividendTracker.emergencyWithdrawBNB();
     }
 
-    function dividendTrackerEmergencyWithdrawBread() external onlyOwner {
-        dividendTracker.emergencyWithdrawBread();
+    function dividendTrackerEmergencyWithdrawToken() external onlyOwner {
+        dividendTracker.emergencyWithdrawToken();
     }
 }
