@@ -1050,8 +1050,8 @@
     <h3>💸 <span data-i18n="div.title">Claim Dividends</span></h3>
     <p class="modal-sub" data-i18n="div.desc">Check and claim BNB dividends from tokens you hold</p>
     <div style="display:flex;gap:8px;margin-bottom:16px">
-      <input type="text" id="div-custom-addr" placeholder="Paste contract address..." style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:.82rem">
-      <button class="btn btn-gold" style="padding:9px 16px;font-size:.82rem" onclick="loadCustomDividend()">🔍 <span data-i18n="div.search">Search</span></button>
+      <input type="text" id="div-custom-addr" placeholder="Paste contract address..." style="flex:1;min-width:0;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:.82rem">
+      <button style="padding:9px 14px;border-radius:8px;border:1px solid var(--gold);background:rgba(245,200,66,.12);color:var(--gold);font-family:var(--font);font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0" onclick="loadCustomDividend()">🔍 <span data-i18n="div.search">Search</span></button>
     </div>
     <div id="div-loading" style="text-align:center;padding:20px;color:var(--muted)">⏳ Loading your tokens...</div>
     <div id="div-list" style="display:none"></div>
@@ -1122,7 +1122,7 @@ function getWP(){
 
 async function connectWallet(){
   var wp = getWP();
-  if(!wp){ alert('No wallet detected. Install MetaMask or TokenPocket.'); return; }
+  if(!wp){ alert('No wallet detected. Install MetaMask / OKX / Bitget / TP / Trust / Coinbase.'); return; }
   try {
     var bscChain = { chainId:'0x38', chainName:'BNB Smart Chain', rpcUrls:['https://bsc-dataseed.binance.org/'], nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18}, blockExplorerUrls:['https://bscscan.com/'] };
     try { await wp.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x38'}]}); }
