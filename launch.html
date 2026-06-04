@@ -525,13 +525,6 @@
       </div>
     </div>
 
-    <div class="form-group">
-      <label class="form-label" style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="wlOnly" style="width:auto;margin:0;accent-color:var(--gold)" />
-        <span data-i18n="field.whitelist">Whitelist-only Mint</span>
-      </label>
-      <span class="form-hint" data-i18n="hint.whitelist">Only whitelisted addresses can mint during presale phase</span>
-    </div>
 
     <div class="form-group" style="margin-top:12px">
       <label class="form-label"><span data-i18n="field.vanity">Contract Vanity Suffix</span> <span style="font-size:.72rem;color:var(--muted2);font-weight:400">(optional)</span></label>
@@ -1053,7 +1046,6 @@ async function deployToken(){
   var liqBps  = parseInt(document.getElementById('a-liq').value) || 0;
   var fundAddr = document.getElementById('marketingWallet').value.trim() || currentAccount;
   var minHold  = parseInt(document.getElementById('minHold').value) || 0;
-  var wlOnly  = document.getElementById('wlOnly').checked;
   var desc    = document.getElementById('tokenDesc').value.trim();
   // Owner = 用户钱包（CREATE2 工厂部署时 msg.sender 是工厂地址，部署后 transferOwnership 转回）
   var ownerAddr = currentAccount;
@@ -1092,7 +1084,6 @@ async function deployToken(){
       mktBps * 100, burnBps * 100, divBps * 100, liqBps * 100,
       fundAddr,
       minHoldWei,
-      wlOnly,
       ownerAddr
     ]).slice(2); // 去掉 0x
 
@@ -1130,7 +1121,6 @@ async function deployToken(){
         mktBps * 100, burnBps * 100, divBps * 100, liqBps * 100,
         fundAddr,
         minHoldWei,
-        wlOnly,
         ownerAddr
       );
       setModalStatus((currentLang==='zh'?'等待确认...':'Waiting for confirmation...'));
@@ -1167,7 +1157,7 @@ async function deployToken(){
           img: logoDataUrl || '',
           desc: desc,
           links: links,
-          wl: wlOnly ? 1 : 0,
+          wl: 0,
           deployer: currentAccount,
           t: Math.floor(Date.now()/1000)
         })
