@@ -606,6 +606,24 @@
     .modal-ok { display: none; text-align: center; padding: 24px 0; }
     .modal-ok .check-icon { font-size: 3rem; margin-bottom: 12px; }
     .modal-ok p { color: var(--muted); font-size: .9rem; }
+    /* ── Dividend rows ── */
+    .div-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; border-radius: 10px;
+      background: var(--bg3); border: 1px solid var(--border);
+      margin-bottom: 10px;
+    }
+    .div-row .div-symbol { font-weight:700; font-size:.95rem; min-width:70px; }
+    .div-row .div-name { color:var(--muted); font-size:.78rem; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .div-row .div-amount { font-family:var(--mono); font-size:.85rem; color:var(--gold); min-width:90px; text-align:right; }
+    .div-row .div-btn {
+      padding: 8px 18px; border-radius: 8px; border:1px solid var(--gold);
+      background: rgba(245,200,66,.1); color: var(--gold);
+      font-family: var(--font); font-size: .8rem; font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: all .15s;
+    }
+    .div-row .div-btn:hover { background: var(--gold); color: var(--bg); }
+    .div-row .div-btn:disabled { opacity:.35; cursor:not-allowed; }
 
     /* ── FOOTER ── */
     footer {
@@ -709,6 +727,7 @@
       <button class="btn btn-outline" id="btn-wallet" onclick="connectWallet()">Connect Wallet</button>
       <button class="btn btn-ghost lang-toggle" id="lang-btn" onclick="toggleLang()" title="切换语言 / Switch Language">中文</button>
       <a href="#about" class="btn btn-ghost" data-i18n="nav.about">About</a>
+      <a href="#" class="btn btn-ghost" data-i18n="nav.dividend" onclick="openDividendModal();return false;">Claim Dividend</a>
       <a href="launch.html" class="btn btn-gold" data-i18n="nav.launch">Launch Token →</a>
     </div>
   </nav>
@@ -1024,6 +1043,18 @@
   </div>
 </div>
 
+<!-- ═══ DIVIDEND MODAL ═══ -->
+<div class="overlay" id="divOverlay">
+  <div class="modal" style="width:580px;max-height:80vh;overflow-y:auto">
+    <button class="modal-x" onclick="closeDividendModal()">✕</button>
+    <h3>💸 <span data-i18n="div.title">Claim Dividends</span></h3>
+    <p class="modal-sub" data-i18n="div.desc">Check and claim BNB dividends from tokens you hold</p>
+    <div id="div-loading" style="text-align:center;padding:20px;color:var(--muted)">⏳ Loading your tokens...</div>
+    <div id="div-list" style="display:none"></div>
+    <div id="div-empty" style="display:none;text-align:center;padding:20px;color:var(--muted)" data-i18n="div.empty">No dividend-bearing tokens found</div>
+  </div>
+</div>
+
 <!-- ═══ FOOTER ═══ -->
 <footer>
   <div class="container">
@@ -1067,7 +1098,23 @@ window.addEventListener('load', function(){
 });
 
 /* ─── WALLET ─── */
-function getWP(){ return (window.tokenpocket && window.tokenpocket.isTokenPocket) ? window.tokenpocket : window.ethereum || null; }
+function getWP(){ 
+  // TokenPocket
+  if(window.tokenpocket && window.tokenpocket.isTokenPocket) return window.tokenpocket;
+  // OKX / Bitget / Coinbase / Trust
+  if(window.okxwallet) return window.okxwallet;
+  if(window.bitkeep && window.bitkeep.ethereum) return window.bitkeep.ethereum;
+  if(window.coinbaseWalletExtension) return window.coinbaseWalletExtension;
+  if(window.trustwallet) return window.trustwallet;
+  // Generic injected
+  if(window.ethereum) return window.ethereum;
+  // Mobile DApp browser fallback: check for any injected provider
+  for(var key in window){
+    try { if(window[key] && window[key].isMetaMask) return window[key]; } catch(e){}
+    try { if(window[key] && window[key].isTokenPocket) return window[key]; } catch(e){}
+  }
+  return null;
+}
 
 async function connectWallet(){
   var wp = getWP();
@@ -1099,6 +1146,94 @@ function disconnectWallet(){
   document.getElementById('btn-wallet').textContent='Connect Wallet';
   document.getElementById('btn-wallet').style.borderColor='';
   document.getElementById('btn-wallet').style.color='';
+}
+
+/* ─── DIVIDEND ─── */
+var TRACKER_ABI = [
+  'function withdrawableDividendOf(address) view returns (uint256)',
+  'function claim() external',
+  'function lastClaimTimes(address) view returns (uint256)',
+  'function claimWait() view returns (uint256)'
+];
+
+function openDividendModal(){
+  if(!account){ alert('Please connect wallet first'); return; }
+  document.getElementById('divOverlay').classList.add('open');
+  document.getElementById('div-list').style.display='none';
+  document.getElementById('div-empty').style.display='none';
+  document.getElementById('div-loading').style.display='block';
+  loadDividends();
+}
+
+function closeDividendModal(){
+  document.getElementById('divOverlay').classList.remove('open');
+}
+
+async function loadDividends(){
+  var listEl = document.getElementById('div-list');
+  var emptyEl = document.getElementById('div-empty');
+  var loadEl = document.getElementById('div-loading');
+  var rows = [];
+  for(var i=0;i<allTokens.length;i++){
+    var t = allTokens[i];
+    try {
+      var c = new ethers.Contract(t.addr, CONTRACT_DATA.ABI, provider);
+      // Get user token balance
+      var bal = await c.balanceOf(account).catch(function(){return ethers.BigNumber.from(0);});
+      if(bal.isZero()) continue;
+      // Get tracker address
+      var trackerAddr = await c.dividendTracker().catch(function(){return null;});
+      if(!trackerAddr) continue;
+      // Get withdrawable dividend
+      var tr = new ethers.Contract(trackerAddr, TRACKER_ABI, provider);
+      var wdiv = await tr.withdrawableDividendOf(account).catch(function(){return ethers.BigNumber.from(0);});
+      var wdivBNB = parseFloat(ethers.utils.formatEther(wdiv));
+      rows.push({
+        addr: t.addr,
+        name: t.name || '?',
+        symbol: t.symbol || '?',
+        balance: parseFloat(ethers.utils.formatEther(bal)),
+        tracker: trackerAddr,
+        withdrawable: wdivBNB
+      });
+    } catch(e){}
+  }
+  loadEl.style.display='none';
+  if(rows.length===0){
+    emptyEl.style.display='block';
+    return;
+  }
+  rows.sort(function(a,b){ return b.withdrawable - a.withdrawable; });
+  var html = '';
+  for(var j=0;j<rows.length;j++){
+    var r = rows[j];
+    var hasDiv = r.withdrawable > 0.000000001;
+    html += '<div class="div-row">'
+      + '<div class="div-symbol">' + r.symbol + '</div>'
+      + '<div class="div-name">' + r.name + ' · ' + r.balance.toFixed(0) + ' held</div>'
+      + '<div class="div-amount">' + (hasDiv ? r.withdrawable.toFixed(6) + ' BNB' : '—') + '</div>'
+      + '<button class="div-btn" ' + (hasDiv ? 'onclick="claimDiv(\''+r.addr+'\')"' : 'disabled') + '>Claim</button>'
+      + '</div>';
+  }
+  listEl.innerHTML = html;
+  listEl.style.display = 'block';
+}
+
+async function claimDiv(tokenAddr){
+  if(!signer){ alert('Please connect wallet first'); return; }
+  try {
+    var c = new ethers.Contract(tokenAddr, CONTRACT_DATA.ABI, signer);
+    var tx = await c.claimDividend();
+    var btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Pending...';
+    await tx.wait();
+    btn.textContent = 'Done ✓';
+    setTimeout(function(){ loadDividends(); }, 2000);
+  } catch(e){
+    alert('Claim failed: ' + (e.reason || e.message));
+    loadDividends();
+  }
 }
 
 function isAdmin(){ return account && account.toLowerCase()===ADMIN_WALLET.toLowerCase(); }
@@ -1298,6 +1433,7 @@ var LANG = 'en';
 var I18N = {
   en: {
     'nav.about':   'About',
+    'nav.dividend': 'Claim Dividend',
     'nav.launch':  'Launch Token →',
     'hero.tag':    '🍞 Fresh from the Oven · BNB Chain',
     'hero.h1':     'Launch Your Token<br /><em id="hero-em">No Code Required</em>',
@@ -1349,9 +1485,13 @@ var I18N = {
     'cta.btn1':  '🍞 Start Baking Now',
     'cta.btn2':  'Learn More',
     'cta.note':  'No coding required · Gas fees paid by deployer only · Contracts verified on BSCScan',
+    'div.title': 'Claim Dividends',
+    'div.desc':  'Check and claim BNB dividends from tokens you hold',
+    'div.empty': 'No dividend-bearing tokens found',
   },
   zh: {
     'nav.about':   '关于我们',
+    'nav.dividend': '领取分红',
     'nav.launch':  '发射代币 →',
     'hero.tag':    '🍞 BNB链上公平铸币平台',
     'hero.h1':     '发射你的代币<br /><em id="hero-em">无需写一行代码</em>',
@@ -1404,6 +1544,9 @@ var I18N = {
     'cta.btn1':  '🍞 立即开始发射',
     'cta.btn2':  '了解更多',
     'cta.note':  '无需编程 · Gas 费仅由部署者支付 · 合约已在 BSCScan 验证',
+    'div.title': '领取分红',
+    'div.desc':  '查看并领取您持有代币的 BNB 分红',
+    'div.empty': '未找到持有分红的代币',
   }
 };
 
